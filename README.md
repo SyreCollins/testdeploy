@@ -275,10 +275,63 @@ The safest engineering sequence is:
 
 ## Current Status
 
-Current phase: architecture documentation.
+**Phase 0: Complete ✅**
+
+The FastAPI scaffold is fully wired: health/readiness endpoints, internal API-key
+middleware, request ID middleware, structured JSON logging, Docker configuration,
+ruff linting, GitHub Actions CI, and baseline tests all passing.
+
+Foundational RAG building blocks (parsers, chunker, normalizer, embeddings,
+vector store, registry) are implemented as reusable libraries, ready for Phase 1.
+
+**Next:** Phase 1 — Medical Knowledge Platform (source ingestion, retrieval, citations).
 
 Current source of truth: `docs/00_PROJECT_HANDOFF.md`.
 
-Implementation should not begin until the core architecture documents define the
-medical safety model, RAG pipeline, database schema, API contracts, deployment
-architecture, and evaluation framework.
+## Local Development
+
+Create a virtual environment and install dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+```
+
+Create local configuration:
+
+```bash
+cp .env.example .env
+```
+
+Run the API:
+
+```bash
+uvicorn app.main:create_app --factory --reload
+```
+
+Health check:
+
+```bash
+curl http://localhost:8000/v1/health
+```
+
+Readiness check:
+
+```bash
+curl -H "X-Zam-AI-Key: local-dev-key" http://localhost:8000/v1/ready
+```
+
+Run tests:
+
+```bash
+pytest
+```

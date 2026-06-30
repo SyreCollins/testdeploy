@@ -1,0 +1,23 @@
+CLINICAL GUIDELINE: MALARIA TREATMENT IN NIGERIA
+Version: 2026.1
+Publisher: Ministry of Health Nigeria
+License: Open Public Access
+
+1. OVERVIEW
+Malaria remains a major public health concern in Nigeria. This guideline details the recommended treatment regimens for uncomplicated and severe malaria.
+
+2. UNCOMPLICATED MALARIA
+Uncomplicated malaria is defined by the presence of malaria symptoms (fever, chills, headache) without signs of organ dysfunction.
+The recommended first-line treatment is Artemether-Lumefantrine (ACT).
+- Dosage for adults: Artemether 80mg / Lumefantrine 480mg twice daily for 3 days.
+- ACT should be taken with fatty food to enhance absorption.
+
+3. CONTRAINDICATIONS AND WARNINGS
+- Artemether-Lumefantrine is contraindicated in patients with a history of hypersensitivity to artemether or lumefantrine.
+- Avoid use in patients with congenital long QT syndrome or severe renal/hepatic impairment.
+- Side effects: Headache, dizziness, abdominal pain, and muscle pain.
+
+4. CITATION DETAILS
+Document Reference: MOH-NIG-MAL-2026-V1
+Page: 12
+Section: Treatment Regimens

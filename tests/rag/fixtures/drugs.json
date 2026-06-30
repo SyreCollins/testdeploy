@@ -1,0 +1,50 @@
+[
+  {
+    "generic_name": "Amoxicillin",
+    "brand_names": ["Amoxil", "Moxatag"],
+    "active_ingredients": ["amoxicillin"],
+    "atc_code": "J01CA04",
+    "indications": [
+      "Treatment of ear, nose, throat, skin, and urinary tract infections.",
+      "Treatment of pneumonia and tonsillitis."
+    ],
+    "contraindications": [
+      "History of hypersensitivity to penicillin or cephalosporins."
+    ],
+    "warnings": [
+      "Serious and occasionally fatal hypersensitivity (anaphylactic) reactions have been reported."
+    ],
+    "side_effects": [
+      "Diarrhea",
+      "Nausea",
+      "Skin rash"
+    ],
+    "dosage_guidance": "Adults: 250 mg to 500 mg every 8 hours, or 500 mg to 875 mg every 12 hours."
+  },
+  {
+    "generic_name": "Ibuprofen",
+    "brand_names": ["Advil", "Motrin", "Nurofen"],
+    "active_ingredients": ["ibuprofen"],
+    "atc_code": "M01AE01",
+    "indications": [
+      "Relief of mild to moderate pain.",
+      "Reduction of fever.",
+      "Treatment of primary dysmenorrhea."
+    ],
+    "contraindications": [
+      "Active gastrointestinal bleeding or peptic ulcer disease.",
+      "History of severe allergic reaction to aspirin or other NSAIDs.",
+      "Third trimester of pregnancy."
+    ],
+    "warnings": [
+      "Cardiovascular risk: NSAIDs may cause an increased risk of serious cardiovascular thrombotic events.",
+      "Gastrointestinal risk: NSAIDs cause an increased risk of serious gastrointestinal adverse events including bleeding and ulceration."
+    ],
+    "side_effects": [
+      "Dyspepsia",
+      "Headache",
+      "Dizziness"
+    ],
+    "dosage_guidance": "Adults: 200 mg to 400 mg every 4 to 6 hours as needed. Maximum daily dose is 1200 mg (OTC) or 3200 mg (prescription)."
+  }
+]

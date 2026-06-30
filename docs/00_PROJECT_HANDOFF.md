@@ -1,789 +1,289 @@
 # Zam AI Project Handoff
 
-## 1. Purpose
+**Operational source of truth** — update whenever the platform design, implementation status, risks, or decisions change.
 
-This document is the operational source of truth for the Zam AI engineering project.
-It should be updated whenever the platform design, implementation status, risks, or
-architectural decisions change.
+Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and third-party health companies. The highest priority is preventing unsafe, ungrounded, or hallucinated medical responses.
 
-Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and
-third-party health companies. Because the product operates in a medical context,
-the highest priority is preventing unsafe, ungrounded, or hallucinated medical
-responses.
+> **Core rule:** No medical response from LLM internal knowledge. Every answer must be grounded in verified medical sources through retrieval, structured clinical logic, or approved tools.
 
-The central engineering rule is:
+---
 
-> No medical response should ever come from an LLM's internal knowledge. Every
-> medical answer must be grounded in verified medical sources through retrieval,
-> structured clinical logic, or approved tools.
+## 1. Status at a Glance
 
-This rule affects every part of the platform: product requirements, data
-modeling, AI orchestration, retrieval, evaluation, monitoring, API design,
-security, compliance, and deployment.
+| Area | Status |
+| --- | --- |
+| **Documentation** | ✅ All 12 docs completed (DB design deferred — backend-owned) |
+| **Phase 0 — Scaffold** | ✅ Complete (API, middleware, logging, Docker, CI, lint, tests passing) |
+| **Phase 1 — Knowledge Platform** | 🟡 Building blocks exist (parsers, chunker, registry, embeddings, vector store) — not wired into API |
+| **Phase 2+ — AI Core & User Workflows** | ❌ Not started |
+
+---
 
 ## 2. Current Project State
 
 ### 2.1 Repository State
 
-The repository is currently in the documentation and architecture planning phase.
-There is not yet a production application implementation.
-
-Current known files:
-
-- `README.md`
-- `zamai.md`
-- `ZamAI.docx`
-- `Zam_AI_Master_Working_Document (1).pdf`
-
-The `zamai.md` file defines the full documentation assignment and should be
-treated as the initial architecture brief.
-
-### 2.2 Product State
-
-Zam AI is planned as a production-grade healthcare AI platform serving four major
-audiences:
-
-- Patients
-- Doctors
-- Pharmacies
-- Third-party health companies through public APIs
-
-The intended capabilities include:
-
-- Symptom checking
-- Medication guidance
-- Drug information
-- Drug interaction checking
-- Contraindication detection
-- Dosage verification
-- Prescription explanation
-- Prescription OCR
-- Medication reminders
-- Personalized health recommendations
-- Pharmacy intelligence
-- Clinical decision support
-- Predictive analytics
-- Public API access
-
-### 2.3 Engineering State
-
-The platform has not yet been implemented. The immediate engineering priority is
-to produce a complete architecture and implementation specification before code
-is written.
-
-The expected stack from the project brief is:
-
-- Backend: FastAPI and Python
-- Primary application database: owned by the main backend team and to be
-  confirmed as that design matures
-- User authentication and authorization: owned by the main backend team
-- AI API authentication: internal API key used by the backend when calling the
-  AI API
-- Deployment: Google Cloud Run
-- Containerization: Docker
-- Cache and job coordination: Redis
-- LLM providers: Claude and Gemini, with provider abstraction
-- Vector search: to be selected and justified in the RAG architecture
-- Embeddings: to be selected and justified in the RAG architecture
-- OCR: to be selected and justified in the prescription intelligence design
-- Monitoring: production-grade observability stack to be selected and justified
-
-## 3. Current Milestone
-
-### Milestone: Architecture Documentation Foundation
-
-Status: Completed for the current architecture planning pass.
-
-The current documentation set defines the product, system architecture, AI
-architecture, RAG architecture, internal API contracts, security posture,
-evaluation framework, deployment architecture, engineering standards, roadmap,
-and decision log.
-
-The original request included a full database design document. That document is
-intentionally deferred because the main backend engineer owns the primary
-application database. Zam AI should not design patient, doctor, pharmacy,
-prescription, auth, reminder, or partner database tables unless ownership
-changes.
-
-Required documentation files:
-
-- `README.md`
-- `docs/00_PROJECT_HANDOFF.md`
-- `docs/01_PRODUCT_REQUIREMENTS.md`
-- `docs/02_SYSTEM_ARCHITECTURE.md`
-- `docs/03_AI_ARCHITECTURE.md`
-- `docs/04_RAG_ARCHITECTURE.md`
-- `docs/05_DATABASE_DESIGN.md` - deferred; backend-owned database
-- `docs/06_API_SPECIFICATION.md`
-- `docs/07_SECURITY_AND_COMPLIANCE.md`
-- `docs/08_AI_EVALUATION.md`
-- `docs/09_DEPLOYMENT_ARCHITECTURE.md`
-- `docs/10_ENGINEERING_GUIDELINES.md`
-- `docs/11_ROADMAP.md`
-- `docs/12_DECISION_LOG.md`
-
-## 4. Completed Work
-
-The following work has been completed:
-
-- Initial project brief captured in `zamai.md`.
-- Documentation structure defined.
-- Safety-first product direction established.
-- Initial handoff document created.
-- `README.md` rewritten as the project landing page.
-- `docs/01_PRODUCT_REQUIREMENTS.md` created.
-- `docs/02_SYSTEM_ARCHITECTURE.md` created.
-- `docs/03_AI_ARCHITECTURE.md` created.
-- `docs/04_RAG_ARCHITECTURE.md` created.
-- `docs/06_API_SPECIFICATION.md` created.
-- `docs/07_SECURITY_AND_COMPLIANCE.md` created.
-- `docs/08_AI_EVALUATION.md` created.
-- `docs/09_DEPLOYMENT_ARCHITECTURE.md` created.
-- `docs/10_ENGINEERING_GUIDELINES.md` created.
-- `docs/11_ROADMAP.md` created.
-- `docs/12_DECISION_LOG.md` created.
-- Supabase/Auth/RLS assumptions removed from the documentation after the
-  backend ownership boundary was clarified.
-- `docs/05_DATABASE_DESIGN.md` intentionally deferred because the main backend
-  owns the application database design.
-
-## 5. In-Progress Work
-
-The following work is currently in progress:
-
-- Review and refinement of the architecture documentation with backend, product,
-  security, and clinical stakeholders.
-- Clarifying backend-to-AI data contracts.
-- Confirming source licensing, model providers, vector database, OCR provider,
-  and deployment details.
-
-## 6. Upcoming Work
-
-The next work should be:
-
-1. Review the documentation with the backend engineer and confirm the
-   backend-to-AI request/response contracts.
-2. Decide whether Zam AI needs a separate AI metadata store or an approved
-   backend-owned schema for traces, jobs, source metadata, and evaluations.
-3. Confirm the first licensed medical source set.
-4. Benchmark embedding and vector database options.
-5. Select the initial OCR provider and prescription review workflow.
-6. Define the first golden evaluation datasets.
-7. Scaffold the FastAPI internal AI service.
-8. Implement internal API-key middleware, health checks, structured logging, and
-   request IDs.
-9. Build the first source ingestion and retrieval prototype.
-
-The documentation phase intentionally started with product and system context
-before lower-level implementation details. The implementation phase should now
-start with service boundaries, source ingestion, retrieval, evaluation, and
-internal API security before user-facing AI workflows.
-
-## 7. Architecture Decisions
-
-This section records the current architectural direction. Detailed decision
-records should later be expanded in `docs/12_DECISION_LOG.md`.
-
-### 7.1 Use a Modular Monolith Before Microservices
-
-Decision: Start with a modular monolith implemented in FastAPI, with clearly
-separated domain modules.
-
-Rationale:
-
-- The product has complex safety requirements that benefit from a single,
-  inspectable codebase during early development.
-- A modular monolith reduces distributed system complexity while preserving
-  clean service boundaries.
-- Medical safety, auditability, and evaluation require consistent request
-  tracing across retrieval, orchestration, tools, and response generation.
-- Premature microservices would increase deployment, observability, and
-  cross-service consistency risks.
-
-Expected modules:
-
-- Identity and access
-- User profiles
-- Medical knowledge ingestion
-- Retrieval
-- AI orchestration
-- Conversation management
-- Prescription intelligence
-- Medication intelligence
-- Reminders
-- Pharmacy intelligence
-- Doctor assistant
-- Partner API
-- Billing and usage
-- Audit and compliance
-- Evaluation
+The repo has both the full architecture documentation set and a working Phase 0 scaffold.
+
+**Docs (12 of 13 planned):**
+- `README.md` — project landing page
+- `docs/00_PROJECT_HANDOFF.md` — this file
+- `docs/01_PRODUCT_REQUIREMENTS.md` through `docs/12_DECISION_LOG.md`
+- `docs/05_DATABASE_DESIGN.md` — **deferred** (backend owns the application DB)
+
+**Code:**
+- `app/main.py` — FastAPI application factory
+- `app/core/` — config, errors, logging, middleware (API key, request ID)
+- `app/api/routes/health.py` — `GET /v1/health` and `GET /v1/ready`
+- `app/rag/` — parsers, normalizer, chunker, embeddings, vector store, registry (SQLModel)
+- `app/ai/`, `app/domains/`, `app/integrations/`, `app/evaluation/`, `app/workers/` — empty scaffolds
+- `tests/test_health.py` — 3 baseline tests
+- `.github/workflows/ci.yml` — lint + test + Docker build
+- `Dockerfile`, `pyproject.toml`, `.env.example`
+
+### 2.2 Engineering State
+
+```
+Phase 0: ████████████████████ 100%
+Phase 1: ████░░░░░░░░░░░░░░░░  20%  (RAG building blocks exist as libraries)
+Phase 2: ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
+```
+
+**Stack in place:**
+- Python 3.11+, FastAPI, Pydantic, SQLModel, uvicorn
+- Ruff (lint), pytest (test)
+- Docker (containerisation)
+- Provider-abstraction patterns for parsers, embeddings, vector stores
+
+**Stack decisions pending (for Phase 1):**
+- LLM provider(s) — Claude and Gemini targeted
+- Embedding provider
+- Vector database (pgvector / Qdrant / Pinecone / etc.)
+- OCR provider
+- Queue technology (RQ / Celery / Cloud Tasks)
+- Object storage
+
+### 2.3 Product State
+
+Zam AI is planned for four audiences via internal APIs called by the main backend:
+
+| Audience | Capabilities |
+| --- | --- |
+| **Patients** | Symptom triage, drug info, interaction/contraindication checks, prescription OCR & explanation, reminders, health recommendations |
+| **Doctors** | Medication review, patient summaries, evidence-linked decision support, education draft generation |
+| **Pharmacies** | Medication intelligence, substitutions, interaction/contraindication warnings, inventory-aware guidance |
+| **Partners** | Mediated AI capabilities through the main backend (drug info, OCR, interactions) |
+
+---
+
+## 3. Milestone: Phase 0 Setup
+
+**Status: ✅ Complete**
+
+### Deliverables
+
+| Item | Status |
+| --- | --- |
+| FastAPI project scaffold | ✅ |
+| Configuration system (pydantic-settings + .env) | ✅ |
+| Internal API-key middleware | ✅ |
+| Request ID middleware (with latency logging) | ✅ |
+| Structured JSON logging | ✅ |
+| Common error handling (ApiError + global handlers) | ✅ |
+| `GET /v1/health` endpoint | ✅ |
+| `GET /v1/ready` endpoint | ✅ |
+| Dockerfile | ✅ |
+| ruff linting (120 char line length) | ✅ |
+| pytest baseline tests (3 passing) | ✅ |
+| GitHub Actions CI (lint + test + Docker build) | ✅ |
+
+### What's Included Beyond Pure Scaffold
+
+While delivering Phase 0, foundational RAG building blocks were also implemented as reusable libraries. They are **not yet wired into the API** but are ready for Phase 1:
+
+- Parsers: `BaseParser`, `PdfParser`, `TxtParser`, `JsonParser` (with drug structure extraction)
+- `Normalizer`: whitespace/dosage-unit cleaning, brand→generic resolution
+- `Chunker`: section-aware chunking with overlap and sentence-boundary detection
+- `EmbeddingProvider` ABC + `MockEmbeddingProvider` (deterministic pseudo-random vectors)
+- `VectorStore` ABC + `MemoryVectorStore` (cosine similarity + hybrid keyword boost)
+- `RagRegistry` (SQLModel + SQLite): CRUD for sources, documents, chunks with dedup
+- `MedicalSource`, `SourceDocument`, `DocumentChunk`, `Citation` schemas
+
+---
+
+## 4. Upcoming Work
+
+### Immediate Next Steps
+
+1. **Confirm backend-to-AI contracts** — request envelopes, context fields, response formats
+2. **Decide AI metadata storage** — separate DB or shared schema with backend
+3. **Confirm first licensed medical source** — NAFDAC, EMDEX, BNF, MIMS, etc.
+4. **Confirm embedding provider and vector database** — benchmark before deciding
+5. **Select OCR provider** and design async review workflow
+6. **Define first golden evaluation datasets**
+7. **Build end-to-end ingestion pipeline** (source → parse → normalize → chunk → embed → index)
+8. **Wire retrieval into the API** for grounded Q&A
 
-Future implication:
+### Recommended Build Order
 
-Modules that later require independent scaling can be extracted into services
-after their contracts are stable.
+| Phase | Focus | Depends On |
+| --- | --- | --- |
+| **1** | Medical knowledge platform — ingestion, retrieval, citations, grounding | Source licensing, vector DB, embedding provider |
+| **2** | AI core — orchestrator, safety engine, model gateway, prompts | Phase 1 |
+| **3** | Patient MVP — medical Q&A, drug info, symptom guidance | Phase 1 + 2 |
+| **4** | Prescription intelligence — OCR, interactions, dosage check | Phase 1 + 2 |
+| **5** | Personalisation & reminders | Phase 3 + 4 |
+| **6** | Doctor & pharmacy workflows | Phase 3 + 4 |
+| **7** | Advanced AI — voice, multilingual, predictive | Phase 5 + 6 |
+| **8** | Public SaaS platform | Everything above |
 
-### 7.2 Require Retrieval for Medical Answers
+---
 
-Decision: Medical answers must be generated only after the system retrieves
-approved clinical context or invokes approved deterministic tools.
+## 5. Architecture Decisions
 
-Rationale:
+### ADR 1: Modular Monolith + Workers
+**Decision:** Start with a modular FastAPI service and separate background workers, not microservices.
+**Why:** Faster development, easier tracing, clear module boundaries. Modules can be extracted later when contracts stabilise.
 
-- LLMs can produce fluent but incorrect medical content.
-- Medical source grounding is the core product safety mechanism.
-- Citations, confidence scoring, and groundedness checks require traceable
-  source documents.
+### ADR 2: Retrieval-Required Medical Answers
+**Decision:** Every medical answer requires retrieved evidence or approved tools.
+**Why:** Core safety mechanism. No fabricated clinical facts.
 
-Implication:
+### ADR 3: Provider Abstraction
+**Decision:** Abstract LLMs, embeddings, OCR, and vector stores behind internal interfaces.
+**Why:** Avoid vendor lock-in, support testing and fallback.
 
-The AI orchestrator must refuse, redirect, or escalate when no reliable source
-context is available.
+### ADR 4: Evaluation as Infrastructure
+**Decision:** Build evaluation datasets and release gates before production launch.
+**Why:** Medical AI cannot be managed through manual testing alone.
 
-### 7.3 Use Provider-Abstraction for LLMs
+### ADR 5: Separate Medical Knowledge from User Data
+**Decision:** Canonical medical references, operational data (pharmacy inventory), and patient context are stored separately.
+**Why:** Different trust, freshness, privacy, and retention requirements.
 
-Decision: The application should support multiple LLM providers behind a stable
-internal interface.
+### ADR 6: Partners Behind Main Backend
+**Decision:** Partners access AI capabilities through the main backend, not directly.
+**Why:** Backend owns partner identity, billing, access control.
 
-Rationale:
+---
 
-- Medical AI products should avoid being tightly coupled to one model vendor.
-- Different tasks may require different model characteristics: latency, context
-  length, tool calling quality, cost, multilingual performance, or reasoning
-  depth.
-- Provider fallback is useful for reliability.
+## 6. Current Risks
 
-Initial likely providers:
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| **Medical hallucination** | Harm from fabricated answers | Retrieval-required policy, grounding checks, refusal thresholds |
+| **Source licensing delays** | Can't start ingestion | Track license status per source; start with any approved source |
+| **Clinical scope creep** | Drift into ungoverned diagnosis | Clear PRD scope, triage/escalation policies, disclaimers |
+| **Privacy compliance** | NDPA exposure | Privacy-by-design, encryption, consent tracking, audit logs |
+| **Evaluation blind spots** | Strong demos, weak real-world perf | Nigeria-specific datasets, misspellings, multilingual, adversarial tests |
+| **Operational reliability** | Provider failures | Provider abstraction, retries, circuit breakers, graceful degradation |
 
-- Claude for high-quality medical explanation, instruction following, and
-  safety-sensitive generation.
-- Gemini for long-context and Google Cloud ecosystem alignment.
+---
 
-Implementation implication:
+## 7. Known Blockers (Pre-Production)
 
-The internal `ModelProvider` interface should support:
+- [ ] Licensing for NAFDAC, EMDEX, BNF, MIMS, WHO ATC, Nigeria Essential Medicines List
+- [ ] Initial country scope: Nigeria only or multi-country?
+- [ ] Clinical governance model: who reviews safety policy and evaluation sets?
+- [ ] EHR integration: store records directly or integrate with external systems?
+- [ ] Regulatory requirements beyond NDPA
+- [ ] Symptom checking scope: educational triage vs diagnosis support?
+- [ ] Launch surface: mobile, web, WhatsApp, API, or all?
+- [ ] Budget for LLMs, OCR, vector DB, monitoring, cloud infra
 
-- Chat completion
-- Structured output
-- Tool calling
-- Streaming
-- Safety metadata
-- Token usage
-- Provider latency
-- Model version capture
+---
 
-### 7.4 Treat Evaluation as Product Infrastructure
+## 8. Technical Debt to Avoid
 
-Decision: AI evaluation must be designed before launch, not added after launch.
+- Don't ship chat before retrieval and evaluation are reliable
+- Don't treat source ingestion as a one-time import — version everything
+- Don't mix patient data with canonical medical knowledge
+- Don't let prompts become undocumented business logic
+- Don't add public APIs before rate limits, audit, and usage tracking
+- Don't add OCR without human review pathways
 
-Rationale:
+---
 
-- Medical AI quality cannot be managed through anecdotal testing.
-- Every model, retrieval, prompt, and source update can create regressions.
-- Launch readiness requires measurable groundedness, citation accuracy,
-  refusal quality, emergency escalation behavior, and clinical correctness.
+## 9. Infrastructure Direction
 
-Implication:
+| Component | Target | Status |
+| --- | --- | --- |
+| API runtime | Google Cloud Run | Dockerfile ready, CI building |
+| Background workers | Cloud Run jobs or separate service | Not implemented |
+| Cache / queue / rate limits | Redis | Configured in design, not deployed |
+| Object storage | Cloud Storage | Not implemented |
+| Secrets | Secret Manager | Not implemented |
+| Database (AI metadata) | Postgres or backend-shared schema | TBD with backend team |
+| Vector store | pgvector / Qdrant / Pinecone (TBD) | MemoryVectorStore for local dev |
 
-The platform needs golden datasets, automated regression tests, human review
-queues, and production monitoring from the beginning.
+---
 
-### 7.5 Separate Medical Knowledge From User Data
+## 10. API Direction
 
-Decision: Verified medical knowledge, user health records, pharmacy inventory,
-and conversation data should be modeled separately.
+Zam AI exposes internal HTTP endpoints consumed by the main backend:
 
-Rationale:
+- **Implemented:** `GET /v1/health`, `GET /v1/ready`
+- **Specified (not built):** `POST /v1/ai/medical-qa`, `/v1/ai/symptom-guidance`, `/v1/ai/drug-info`, `/v1/ai/interactions/check`, `/v1/ai/contraindications/check`, `/v1/ai/dosage/verify`, `/v1/ai/prescriptions/ocr-jobs`, `/v1/ai/prescriptions/explain`, `/v1/ai/reminders/parse-schedule`, `/v1/ai/doctor/assist`, `/v1/ai/pharmacy/assist`, `/v1/admin/evaluations/run`
 
-- Each data category has different trust, freshness, privacy, and retention
-  requirements.
-- Medical source documents require versioning and citation metadata.
-- Patient data requires strict consent, access control, and audit logging.
-- Pharmacy inventory changes frequently and should not be treated as canonical
-  clinical knowledge.
+Auth: Internal API key via `X-Zam-AI-Key` header. User auth owned by the main backend.
 
-Implication:
+---
 
-Retrieval must be source-aware and must distinguish between:
+## 11. AI Direction
 
-- Canonical medical references
-- Regulatory drug data
-- Local formulary and inventory data
-- Patient-specific context
-- Conversation memory
+The AI system will be a controlled reasoning layer, not a raw LLM wrapper. Required components (none built yet):
 
-## 8. Current Risks
+**Pre-generation:** Intent classifier → Risk classifier → Safety policy engine → Retrieval planner → Context builder → Prompt manager → Model gateway
+**Post-generation:** Grounding verifier → Citation engine → Confidence scorer → Response composer → Audit logger
 
-### 8.1 Medical Hallucination Risk
+High-risk intents (emergency, pregnancy, paediatric, interactions, contraindications, dosage changes, self-harm) require stricter retrieval, safer language, and escalation guidance.
 
-Risk:
+---
 
-The system could generate a medical answer not supported by verified sources.
+## 12. Open Questions
 
-Mitigation:
+### Product
+- First launch market? First user surface? First MVP persona?
+- Educational guidance only, or clinician decision support from the start?
+- What emergency escalation language is acceptable?
 
-- Retrieval-required generation policy
-- Citation validation
-- Groundedness scoring
-- Refusal behavior when evidence is weak
-- Human review for high-risk workflows
-- Regression tests for unsafe answer patterns
+### Data
+- Which sources are licensed today? What formats?
+- What patient context will the backend provide in MVP?
+- What data is the AI API allowed to store?
 
-### 8.2 Source Quality and Licensing Risk
+### Technical
+- pgvector or dedicated vector DB?
+- Which embedding provider for medical retrieval quality?
+- Which OCR provider handles Nigerian prescriptions best?
+- RQ, Celery, or Cloud Tasks for background jobs?
 
-Risk:
+---
 
-Medical sources such as BNF, MIMS, EMDEX, and NAFDAC may have licensing,
-availability, freshness, or format constraints.
-
-Mitigation:
-
-- Track every source's license, owner, update cadence, and ingestion method.
-- Preserve source versions.
-- Store document provenance.
-- Do not ingest restricted sources until licensing is confirmed.
-
-### 8.3 Clinical Scope Creep
-
-Risk:
-
-The product could accidentally move from educational support into diagnosis,
-treatment decisions, or emergency medical decision-making without appropriate
-clinical governance.
-
-Mitigation:
-
-- Define medical scope clearly in the PRD.
-- Add explicit triage and escalation policies.
-- Require disclaimers and emergency guidance.
-- Establish clinician review for clinical workflows.
-
-### 8.4 Privacy and Compliance Risk
-
-Risk:
-
-The platform will process sensitive health information, personally identifiable
-information, prescriptions, and possibly doctor-patient interactions.
-
-Mitigation:
-
-- Privacy-by-design architecture
-- NDPA-aligned data governance
-- Encryption at rest and in transit
-- Row-level security
-- Consent tracking
-- Audit logging
-- Role-based access control
-- Data retention rules
-
-### 8.5 Evaluation Blind Spots
-
-Risk:
-
-The system may appear strong in demos but fail under real-world user behavior,
-local drug naming conventions, multilingual queries, incomplete prescriptions,
-or adversarial prompts.
-
-Mitigation:
-
-- Create Nigerian healthcare-specific evaluation datasets.
-- Test generic names, brand names, misspellings, abbreviations, and local
-  prescription formats.
-- Include low-resource and multilingual queries.
-- Include prompt injection and jailbreak scenarios.
-
-### 8.6 Operational Reliability Risk
-
-Risk:
-
-Cloud services, LLM providers, OCR providers, vector search, or background jobs
-may fail during critical user workflows.
-
-Mitigation:
-
-- Provider abstraction
-- Retries with idempotency keys
-- Circuit breakers
-- Graceful degradation
-- Queue-based ingestion and OCR processing
-- Status tracking for long-running workflows
-- Production observability
-
-## 9. Known Blockers
-
-The following blockers must be resolved before production implementation:
-
-- Confirm licensing and access terms for NAFDAC, EMDEX, BNF, MIMS, WHO ATC, and
-  Nigeria Essential Medicines List.
-- Confirm whether the platform will initially support only Nigeria or multiple
-  countries.
-- Confirm clinical governance model: who reviews medical safety policy,
-  evaluation sets, and high-risk responses.
-- Confirm whether Zamda Health will store patient health records directly or
-  integrate with external EHR systems.
-- Confirm the initial regulatory compliance requirements beyond NDPA.
-- Confirm product scope for symptom checking: educational triage only versus
-  diagnosis support.
-- Confirm target launch surface: mobile app, web app, API, WhatsApp, or all.
-- Confirm budget constraints for LLM, OCR, vector database, monitoring, and
-  cloud infrastructure.
-
-## 10. Technical Debt
-
-There is no implementation yet, so there is no code-level technical debt.
-
-Architecture-level debt to avoid:
-
-- Building chat before retrieval and evaluation are ready.
-- Treating medical source ingestion as a one-time import instead of a versioned
-  pipeline.
-- Mixing patient data with canonical medical knowledge.
-- Allowing prompts to become undocumented business logic.
-- Adding public APIs before rate limits, audit logs, and usage tracking exist.
-- Adding OCR without a human review and correction pathway.
-- Treating reminders as simple notifications without medication schedule
-  semantics.
-
-## 11. Database Status
-
-Current status: Deferred to the main backend owner.
-
-Expected direction:
-
-- Treat the primary application database as backend-owned.
-- Do not assume the AI API directly owns patient, doctor, pharmacy, appointment,
-  or authentication tables.
-- Define explicit data contracts for how the backend provides authorized
-  patient, doctor, pharmacy, medication, prescription, and conversation context
-  to the AI API.
-- Store AI-specific metadata in AI-owned tables or schemas where appropriate.
-- Store clinical knowledge metadata in relational tables controlled by the AI
-  knowledge platform or exposed to the AI service through a backend-approved
-  access pattern.
-- Store embeddings either in a dedicated vector database or Postgres with
-  `pgvector`, depending on the final retrieval architecture decision.
-- Store audit logs in append-only tables with strict access controls.
-
-The original documentation plan included `docs/05_DATABASE_DESIGN.md`. That
-file should not be used to design the main application database unless ownership
-changes. If created later, it should be limited to AI-owned metadata, retrieval
-storage, evaluation records, audit traces, and backend-to-AI data contracts.
-
-Database design must include:
-
-- Patients
-- Doctors
-- Pharmacies
-- Organizations
-- Roles and permissions
-- Conversations
-- Messages
-- Medical source documents
-- Document chunks
-- Embeddings
-- Medications
-- Drug interactions
-- Contraindications
-- Prescriptions
-- Prescription line items
-- OCR jobs
-- Reminder schedules
-- Appointments
-- API keys
-- Usage records
-- Audit logs
-- Evaluations
-- Feature flags
-
-## 12. Infrastructure Status
-
-Current status: Not implemented.
-
-Expected direction:
-
-- Google Cloud Run for API services
-- Docker for packaging
-- Backend-owned database and auth services, with integration details to be
-  confirmed by the backend team
-- Redis for caching, rate limits, and job coordination
-- Cloud scheduler or queue service for recurring jobs
-- Object storage for source documents, prescription images, and OCR artifacts
-- Centralized logging, tracing, metrics, and alerting
-
-Infrastructure design must include:
-
-- Development, staging, and production environments
-- Secrets management
-- CI/CD
-- Database migrations
-- Rollback strategy
-- Disaster recovery
-- Backup and restore testing
-- Observability
-- Security monitoring
-
-## 13. API Status
-
-Current status: Not implemented.
-
-Expected direction:
-
-- REST API using FastAPI for the AI service.
-- Internal AI APIs called by the main backend.
-- Streaming support for AI responses where appropriate.
-- Strong JSON schemas for request and response validation.
-- Internal API-key authentication for backend-to-AI requests.
-- User authentication, partner authentication, and role-aware access are owned
-  by the main backend.
-- The AI API should receive authenticated and authorized user context from the
-  backend rather than authenticating end users directly.
-
-API design must include:
-
-- Internal patient-context AI endpoints
-- Internal doctor-assistant AI endpoints
-- Internal pharmacy-assistant AI endpoints
-- Internal partner-facing AI capability endpoints called through the backend
-- Internal API-key verification endpoints or middleware
-- Conversation endpoints
-- Prescription OCR endpoints
-- Drug information endpoints
-- Drug interaction endpoints
-- Reminder endpoints
-- Evaluation and admin endpoints
-- Usage and billing endpoints
-
-## 14. AI Status
-
-Current status: Not implemented.
-
-Expected direction:
-
-The AI system should be built as a controlled medical reasoning and response
-orchestration layer, not as a raw chat wrapper around an LLM.
-
-Required AI components:
-
-- Conversation orchestrator
-- Intent classifier
-- Risk classifier
-- Retrieval planner
-- Context builder
-- Tool router
-- Prompt manager
-- Safety policy engine
-- Citation engine
-- Grounding verifier
-- Confidence scorer
-- Response generator
-- Refusal and escalation handler
-- Memory manager
-- Evaluation logger
-
-The orchestrator should decide whether a request requires:
-
-- Canonical medical retrieval
-- Patient-specific context
-- Medication interaction checks
-- Contraindication checks
-- Dosage verification
-- OCR
-- Emergency escalation
-- Human review
-- Refusal
-
-## 15. Deployment Status
-
-Current status: Not implemented.
-
-Expected direction:
-
-Deploy containerized FastAPI services to Google Cloud Run with managed
-environment variables, secrets, autoscaling, and structured observability.
-
-Deployment requirements:
-
-- Separate dev, staging, and production projects or environments
-- Automated CI checks
-- Automated test runs
-- Migration gates
-- Health checks
-- Readiness checks
-- Rollback procedure
-- Alerting for latency, errors, cost, and safety events
-
-## 16. Evaluation Status
-
-Current status: Not implemented.
-
-Expected direction:
-
-AI evaluation must cover:
-
-- Groundedness
-- Faithfulness
-- Citation accuracy
-- Source relevance
-- Medical correctness
-- Emergency escalation quality
-- Contraindication detection
-- Drug interaction detection
-- Dosage verification accuracy
-- Refusal quality
-- Prompt injection resistance
-- Latency
-- Cost
-- Multilingual robustness
-- Regression stability
-
-Evaluation should run in:
-
-- Local development
-- Pull requests
-- Staging
-- Scheduled production shadow tests
-- Post-deployment monitoring
-
-## 17. Open Questions
-
-### Product Questions
-
-- What is the initial launch market: Nigeria only, Africa-first, or global?
-- What user surface launches first: mobile, web, WhatsApp, partner API, or
-  internal dashboard?
-- Which user persona is the first MVP: patient, pharmacy, doctor, or partner?
-- Will Zam AI provide only educational guidance, or will it support clinician
-  decision workflows from the start?
-- What emergency escalation language is legally and clinically acceptable?
-
-### Medical Governance Questions
-
-- Who approves medical safety policies?
-- Who reviews golden datasets?
-- Who reviews high-risk AI failures?
-- What clinical specialties are in scope at launch?
-- What medical claims is the company willing to make?
-
-### Data Questions
-
-- Which medical sources are licensed and available immediately?
-- What formats are source documents provided in?
-- What update cadence does each source require?
-- Will patient records be manually entered, uploaded, or integrated?
-- Will pharmacy inventory be real-time or periodically synchronized?
-
-### Technical Questions
-
-- Should vector search start with Postgres `pgvector`, a managed vector database,
-  or a hybrid approach?
-- Which embedding provider gives the best combination of medical retrieval
-  quality, cost, latency, and provider reliability?
-- Which OCR provider best handles Nigerian prescriptions, handwriting,
-  abbreviations, and image quality issues?
-- Should background jobs use Celery, Dramatiq, RQ, Cloud Tasks, or another queue
-  architecture?
-- What observability stack is preferred for budget, compliance, and team
-  experience?
-
-## 18. Engineering Notes
-
-### 18.1 Safety-First Implementation Order
-
-The safest implementation order is:
-
-1. Source ingestion and provenance
-2. Retrieval and citation infrastructure
-3. Evaluation datasets and test harness
-4. AI orchestration with refusal behavior
-5. Patient-facing chat or Q&A
-6. Prescription OCR and medication intelligence
-7. Personalization and reminders
-8. Doctor, pharmacy, and partner workflows
-
-This order prevents the team from shipping impressive but unsafe AI features
-before the grounding and evaluation layers are mature.
-
-### 18.2 Medical Response Policy
-
-Every medical response should include enough metadata for internal audit:
-
-- User ID or anonymous session ID
-- Request ID
-- Conversation ID
-- Intent classification
-- Risk classification
-- Retrieved source IDs
-- Source versions
-- Chunk IDs
-- Retrieval scores
-- Model provider
-- Model version
-- Prompt version
-- Tool calls
-- Safety checks
-- Groundedness score
-- Confidence score
-- Final response
-- Refusal or escalation decision
-
-### 18.3 High-Risk Intents
-
-The following intents should be treated as high-risk by default:
-
-- Emergency symptoms
-- Pregnancy medication questions
-- Pediatric medication questions
-- Medication dosage changes
-- Drug interaction questions
-- Contraindication questions
-- Chronic disease medication management
-- Mental health crisis language
-- Severe allergic reactions
-- Chest pain, stroke symptoms, seizures, severe bleeding, poisoning, or
-  breathing difficulty
-
-High-risk intents should require stricter retrieval, safer language, escalation
-guidance, and more conservative confidence thresholds.
-
-### 18.4 Documentation Quality Bar
-
-Each architecture document should:
-
-- Explain the purpose of the subsystem.
-- Define responsibilities and non-responsibilities.
-- Show diagrams where useful.
-- Explain alternatives considered.
-- Justify selected approaches.
-- Describe operational risks.
-- Define acceptance criteria.
-- Include implementation guidance.
-- Include observability and evaluation needs.
-
-## 19. Decision History
+## 13. Decision History
 
 | Date | Decision | Status |
 | --- | --- | --- |
-| 2026-06-29 | Begin with architecture documentation before code implementation. | Accepted |
-| 2026-06-29 | Treat medical hallucination prevention as the highest-priority engineering constraint. | Accepted |
-| 2026-06-29 | Create documentation as multiple markdown files under `docs/`. | Accepted |
-| 2026-06-29 | Build documentation one file at a time to preserve quality and reviewability. | Accepted |
-| 2026-06-29 | Define Zam AI as an internal AI service called by the main backend using an internal API key. | Accepted |
-| 2026-06-29 | Keep user authentication, authorization, and primary application database ownership with the main backend. | Accepted |
-| 2026-06-29 | Defer full application database design because the backend engineer owns it. | Accepted |
-| 2026-06-29 | Complete the current architecture documentation pass, excluding deferred database design. | Accepted |
+| 2026-06-29 | Architecture documentation before code | Accepted |
+| 2026-06-29 | Medical hallucination prevention = highest constraint | Accepted |
+| 2026-06-29 | Docs as multiple markdown files under `docs/` | Accepted |
+| 2026-06-29 | Zam AI = internal service called by main backend via API key | Accepted |
+| 2026-06-29 | User auth & primary DB owned by main backend | Accepted |
+| 2026-06-29 | Full DB design deferred (backend-owned) | Accepted |
+| 2026-06-29 | Documentation pass completed (excl. deferred DB design) | Accepted |
+| 2026-06-30 | Phase 0 scaffold + RAG building blocks completed | Accepted |
 
-## 20. Immediate Next Action
+---
 
-The next recommended action is to review this documentation set with the backend
-engineer and confirm the backend-to-AI integration contract.
+## 14. Next Action
 
-Priority review items:
+Review this handoff with the backend engineer and confirm the backend-to-AI integration contract:
 
-- Internal API-key authentication format.
-- Request and response envelopes.
-- Which patient, prescription, medication, pharmacy, and conversation context
-  the backend will pass to Zam AI.
-- Whether Zam AI gets a separate metadata store.
-- How AI audit traces are stored and retained.
-- First medical sources available for ingestion.
-- First MVP AI workflow to implement.
+- API key format and header conventions
+- Request/response envelope design (see `docs/06_API_SPECIFICATION.md`)
+- What context the backend will pass (patient fields, consent flags, role)
+- Whether Zam AI gets its own metadata store
+- How AI audit traces are retained
+- First medical source to ingest
+- First MVP AI workflow
