@@ -393,3 +393,5 @@ candidates.
 | Date | Change | Status |
 | --- | --- | --- |
 | 2026-06-29 | Initial decision log created. | Draft |
+| 2026-07-01 | Phase 1 complete — mock embeddings + in-memory vector store used; real provider/DB pending | Accepted |
+| 2026-07-01 | ⏰ NEXT: Pick embedding provider + vector database before Phase 2 | Pending |

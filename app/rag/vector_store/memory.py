@@ -81,6 +81,7 @@ class MemoryVectorStore(BaseVectorStore):
                     "generic_name": chunk.generic_name,
                     "brand_names": chunk.brand_names,
                     "chunk_type": chunk.chunk_type,
+                    "source_trust_tier": chunk.source_trust_tier,
                 }
             })
 

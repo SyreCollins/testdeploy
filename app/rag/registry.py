@@ -33,6 +33,7 @@ class RagRegistry:
         version: str,
         license_status: str,
         jurisdiction: str,
+        trust_tier: int | None = None,
         publication_date: str | None = None,
     ) -> MedicalSource:
         """Register a new medical source, or return the existing one if name+version matches"""
@@ -50,6 +51,7 @@ class RagRegistry:
                 version=version,
                 license_status=license_status,
                 jurisdiction=jurisdiction,
+                trust_tier=trust_tier,
                 publication_date=publication_date,
             )
             session.add(source)
@@ -111,6 +113,11 @@ class RagRegistry:
                 # Merge checks if it exists, otherwise inserts
                 session.merge(chunk)
             session.commit()
+
+    def get_source(self, source_id: int) -> MedicalSource | None:
+        """Fetch a source by its ID."""
+        with Session(self.engine) as session:
+            return session.get(MedicalSource, source_id)
 
     def get_chunks_for_document(self, document_id: int) -> list[DocumentChunk]:
         """Get all chunks associated with a document"""

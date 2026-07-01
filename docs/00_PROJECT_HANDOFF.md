@@ -2,6 +2,8 @@
 
 **Operational source of truth** — update whenever the platform design, implementation status, risks, or decisions change.
 
+> **⏰ NEXT SESSION (2026-07-02):** Pick an embedding provider (OpenAI text-embedding-3-small, Cohere, or free alternative) and a vector database (Pinecone, Qdrant, pgvector). Replace `MockEmbeddingProvider` and `MemoryVectorStore` with real ones. Also delete this reminder when done.
+
 Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and third-party health companies. The highest priority is preventing unsafe, ungrounded, or hallucinated medical responses.
 
 > **Core rule:** No medical response from LLM internal knowledge. Every answer must be grounded in verified medical sources through retrieval, structured clinical logic, or approved tools.
@@ -14,7 +16,7 @@ Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and
 | --- | --- |
 | **Documentation** | ✅ All 12 docs completed (DB design deferred — backend-owned) |
 | **Phase 0 — Scaffold** | ✅ Complete (API, middleware, logging, Docker, CI, lint, tests passing) |
-| **Phase 1 — Knowledge Platform** | 🟡 Building blocks exist (parsers, chunker, registry, embeddings, vector store) — not wired into API |
+| **Phase 1 — Knowledge Platform** | ✅ Complete (ingestion + retrieval + 19 tests passing) |
 | **Phase 2+ — AI Core & User Workflows** | ❌ Not started |
 
 ---
@@ -35,9 +37,16 @@ The repo has both the full architecture documentation set and a working Phase 0 
 - `app/main.py` — FastAPI application factory
 - `app/core/` — config, errors, logging, middleware (API key, request ID)
 - `app/api/routes/health.py` — `GET /v1/health` and `GET /v1/ready`
-- `app/rag/` — parsers, normalizer, chunker, embeddings, vector store, registry (SQLModel)
+- `app/api/routes/admin.py` — `POST /v1/admin/sources`, `POST /v1/admin/documents/ingest`
+- `app/api/routes/retrieval.py` — `POST /v1/retrieval/search`
+- `app/api/schemas/retrieval.py` — request/response models for search
+- `app/api/schemas/admin.py` — request/response models for admin endpoints
+- `app/rag/` — parsers (PDF, TXT, JSON, CSV, XLSX), normalizer, chunker, embeddings, vector store, registry (SQLModel), schemas (trust_tier, drug_entity_id), service.py (ingestion orchestrator)
 - `app/ai/`, `app/domains/`, `app/integrations/`, `app/evaluation/`, `app/workers/` — empty scaffolds
-- `tests/test_health.py` — 3 baseline tests
+- `tests/test_health.py` — 3 health endpoint tests
+- `tests/test_parsers.py` — 5 parser tests (CSV, XLSX, auto-selection, encoding)
+- `tests/test_ingestion.py` — 5 service tests (ingest, dedup, search, filters, entity ID)
+- `tests/test_admin_api.py` — 6 API tests (register, ingest, auth, search, filters, errors)
 - `.github/workflows/ci.yml` — lint + test + Docker build
 - `Dockerfile`, `pyproject.toml`, `.env.example`
 
@@ -45,7 +54,7 @@ The repo has both the full architecture documentation set and a working Phase 0 
 
 ```
 Phase 0: ████████████████████ 100%
-Phase 1: ████░░░░░░░░░░░░░░░░  20%  (RAG building blocks exist as libraries)
+Phase 1: ████████████████████ 100%  (All 7 steps complete — 19 tests, 0 lint errors)
 Phase 2: ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
@@ -114,16 +123,34 @@ While delivering Phase 0, foundational RAG building blocks were also implemented
 
 ## 4. Upcoming Work
 
-### Immediate Next Steps
+### Phase 1 Complete ✅
 
-1. **Confirm backend-to-AI contracts** — request envelopes, context fields, response formats
-2. **Decide AI metadata storage** — separate DB or shared schema with backend
-3. **Confirm first licensed medical source** — NAFDAC, EMDEX, BNF, MIMS, etc.
-4. **Confirm embedding provider and vector database** — benchmark before deciding
-5. **Select OCR provider** and design async review workflow
-6. **Define first golden evaluation datasets**
-7. **Build end-to-end ingestion pipeline** (source → parse → normalize → chunk → embed → index)
-8. **Wire retrieval into the API** for grounded Q&A
+The medical knowledge platform is built and wired into the API:
+- 4 source files ingested (Nigeria EML PDF, Medicine Details CSV, NAFDAC CSV, ATC XLSX)
+- Source registration + document ingestion via `POST /v1/admin/*`
+- Hybrid retrieval (cosine similarity + keyword boost) via `POST /v1/retrieval/search`
+- Trust tier filtering, chunk type filtering, drug entity ID resolution
+- 19 tests, 0 lint errors
+
+### Next Phase: Phase 2 — AI Core
+
+1. **Conversation orchestrator** — intent routing, state management, response composition
+2. **Intent classifier** — detect medical intent vs general vs emergency
+3. **Risk classifier** — flag high-risk queries (pregnancy, paediatric, interactions)
+4. **Safety policy engine** — enforce retrieval-required, refusal, escalation rules
+5. **Context builder** — assemble retrieved chunks + patient context into prompt context
+6. **Prompt manager** — versioned prompt templates with model-specific overrides
+7. **Model gateway** — abstract LLM provider with retry, fallback, logging
+8. **Citation engine** — format citations from retrieved chunks
+9. **Grounding verifier** — verify response aligns with retrieved evidence
+10. **Confidence scorer** — score answer confidence from grounding + source tier
+11. **Audit trace writer** — log every request, response, model call, and decision
+
+### Prerequisites for Phase 2
+- LLM provider decision (Claude / Gemini targeted)
+- Prompt policy document
+- AI metadata storage decision
+- First golden evaluation dataset
 
 ### Recommended Build Order
 
@@ -273,6 +300,10 @@ High-risk intents (emergency, pregnancy, paediatric, interactions, contraindicat
 | 2026-06-29 | Full DB design deferred (backend-owned) | Accepted |
 | 2026-06-29 | Documentation pass completed (excl. deferred DB design) | Accepted |
 | 2026-06-30 | Phase 0 scaffold + RAG building blocks completed | Accepted |
+| 2026-07-01 | Phase 1 complete — ingestion pipeline + retrieval API + 19 tests | Accepted |
+| 2026-07-01 | Added CSV and XLSX parsers for NAFDAC, ATC, Medicine Details sources | Accepted |
+| 2026-07-01 | Trust tier ranking system for cross-source conflict resolution | Accepted |
+| 2026-07-01 | Shared app state pattern for services (registry, embeddings, vector store) | Accepted |
 
 ---
 

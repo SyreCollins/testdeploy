@@ -64,6 +64,12 @@ Requirements:
 - Preserve original text.
 - Preserve normalized text.
 
+Trust tier ranking (for conflict resolution only, not for filtering retrieval):
+1. EMDEX (Nigeria-specific, NAFDAC-aligned, primary clinical reference)
+2. WHO ATC / WHO EML (global regulatory-grade)
+3. NAFDAC Greenbook (registration status, not clinical dosing authority)
+4. BNF / MIMS (supplementary, UK/global context)
+
 ### 4.2 Regulatory and Market Sources
 
 Examples:
@@ -280,6 +286,8 @@ Medication metadata where applicable:
 - `population`
 - `condition`
 - `severity`
+- `drug_entity_id`   # canonical ID resolved at ingestion time, shared across all sources
+- `source_trust_tier`
 
 Operational metadata where applicable:
 
@@ -424,6 +432,19 @@ possible.
 
 ## 16. Context Construction
 
+## 16a. 
+Before context construction, chunks retrieved for the same drug_entity_id 
+across multiple sources are compared for the specific fact type being queried 
+(dosage, contraindication, interaction, etc.).
+
+- Agreement across sources → proceed, cite primary tier, note corroboration.
+- Disagreement → do not let generation silently pick one. Either surface 
+  both with a conflict flag, or default to highest trust tier and log the 
+  conflict for review.
+- Single-source coverage → proceed with lower confidence score, may trigger 
+  stricter refusal threshold for high-risk categories.
+
+## 16b.
 The RAG context packet should include:
 
 - Retrieved chunks.
@@ -663,6 +684,11 @@ Alerts:
 - What citation format should be shown to patients?
 - What citation detail should be shown to doctors?
 - What source freshness thresholds are required?
+- What is the trust tier ranking when canonical sources disagree?
+- Who resolves logged cross-source conflicts — clinical reviewer, or 
+  automatic default-to-tier?
+- What disagreement threshold triggers a flag (e.g. dosage differs by X%) 
+  vs. silent default to primary source?
 
 ## 28. Acceptance Criteria
 

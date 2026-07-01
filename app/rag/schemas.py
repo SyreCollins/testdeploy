@@ -12,6 +12,7 @@ class MedicalSource(SQLModel, table=True):
     version: str
     license_status: str  # e.g., "active", "expired", "pending"
     jurisdiction: str  # e.g., "NG", "UK", "GLOBAL"
+    trust_tier: int | None = Field(default=None, description="1=EMDEX, 2=WHO ATC/EML, 3=NAFDAC, 4=BNF/MIMS")
     publication_date: str | None = None
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -51,6 +52,8 @@ class DocumentChunk(SQLModel, table=True):
     # Medical entity linking
     generic_name: str | None = Field(default=None, index=True)
     brand_names: str | None = None  # Comma-separated or JSON list of brands
+    drug_entity_id: str | None = None  # Canonical ID resolved at ingestion, shared across sources
+    source_trust_tier: int | None = None  # Denormalized from MedicalSource for quick conflict resolution
 
     # Relationships
     document: SourceDocument = Relationship(back_populates="chunks")
@@ -63,6 +66,7 @@ class Citation(SQLModel):
     citation_id: str
     source_name: str
     source_version: str
+    source_trust_tier: int | None = None
     document_title: str
     section_path: str
     page_number: int | None = None
