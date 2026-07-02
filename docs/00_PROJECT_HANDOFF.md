@@ -2,7 +2,6 @@
 
 **Operational source of truth** — update whenever the platform design, implementation status, risks, or decisions change.
 
-> **⏰ NEXT SESSION (2026-07-02):** Pick an embedding provider (OpenAI text-embedding-3-small, Cohere, or free alternative) and a vector database (Pinecone, Qdrant, pgvector). Replace `MockEmbeddingProvider` and `MemoryVectorStore` with real ones. Also delete this reminder when done.
 
 Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and third-party health companies. The highest priority is preventing unsafe, ungrounded, or hallucinated medical responses.
 
@@ -65,10 +64,12 @@ Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 - Docker (containerisation)
 - Provider-abstraction patterns for parsers, embeddings, vector stores
 
-**Stack decisions pending (for Phase 1):**
+**Stack decisions made:**
+- Embedding provider: ✅ **Voyage voyage-3** (`VoyageEmbeddingProvider`, 1024-dim)
+- Vector database: ✅ **Pinecone** (`PineconeVectorStore`, serverless)
+
+**Stack decisions pending:**
 - LLM provider(s) — Claude and Gemini targeted
-- Embedding provider
-- Vector database (pgvector / Qdrant / Pinecone / etc.)
 - OCR provider
 - Queue technology (RQ / Celery / Cloud Tasks)
 - Object storage
@@ -151,6 +152,7 @@ The medical knowledge platform is built and wired into the API:
 - Prompt policy document
 - AI metadata storage decision
 - First golden evaluation dataset
+- Pinecone index provisioned and Voyage API key set in environment
 
 ### Recommended Build Order
 
@@ -304,6 +306,9 @@ High-risk intents (emergency, pregnancy, paediatric, interactions, contraindicat
 | 2026-07-01 | Added CSV and XLSX parsers for NAFDAC, ATC, Medicine Details sources | Accepted |
 | 2026-07-01 | Trust tier ranking system for cross-source conflict resolution | Accepted |
 | 2026-07-01 | Shared app state pattern for services (registry, embeddings, vector store) | Accepted |
+| 2026-07-02 | Voyage voyage-3 as embedding provider (replaced initial OpenAI pick) | Accepted |
+| 2026-07-02 | Pinecone (serverless) as vector database | Accepted |
+| 2026-07-02 | Real providers auto-selected when API keys present; mock fallback for local dev | Accepted |
 
 ---
 

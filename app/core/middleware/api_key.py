@@ -14,11 +14,13 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = settings
 
+    _PUBLIC_PATHS = {"/v1/health", "/docs", "/redoc", "/openapi.json"}
+
     async def dispatch(self, request: Request, call_next) -> Response:
-        if request.url.path in {"/v1/health"}:
+        if request.url.path in self._PUBLIC_PATHS:
             return await call_next(request)
 
-        if not self.settings.internal_api_keys:
+        if not self.settings.internal_api_keys_list:
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 content={
@@ -62,6 +64,6 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
     def _is_valid_key(self, provided_key: str) -> bool:
         return any(
             hmac.compare_digest(provided_key, expected_key)
-            for expected_key in self.settings.internal_api_keys
+            for expected_key in self.settings.internal_api_keys_list
         )
 

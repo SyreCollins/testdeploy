@@ -1,6 +1,5 @@
 from functools import lru_cache
 
-from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,22 +16,23 @@ class Settings(BaseSettings):
     service_version: str = "0.1.0"
     log_level: str = "INFO"
     enable_openapi_docs: bool = True
-    internal_api_keys: list[str] = Field(default_factory=list)
+    internal_api_keys: str = ""
     readiness_check_dependencies: bool = False
     database_url: str = "sqlite:///./rag_registry.db"
+    voyage_api_key: str | None = None
+    voyage_embedding_model: str = "voyage-3"
+    pinecone_api_key: str | None = None
+    pinecone_index_name: str = "zam-ai"
+
+    @property
+    def internal_api_keys_list(self) -> list[str]:
+        if not self.internal_api_keys:
+            return []
+        return [k.strip() for k in self.internal_api_keys.split(",") if k.strip()]
 
     @property
     def is_local(self) -> bool:
         return self.environment.lower() in {"local", "dev", "development"}
-
-    @field_validator("internal_api_keys", mode="before")
-    @classmethod
-    def parse_internal_api_keys(cls, value: str | list[str] | None) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, list):
-            return value
-        return [key.strip() for key in value.split(",") if key.strip()]
 
 
 @lru_cache

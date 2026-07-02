@@ -5,7 +5,7 @@ from app.main import create_app
 
 
 def test_health_does_not_require_api_key() -> None:
-    app = create_app(Settings(internal_api_keys=["test-key"]))
+    app = create_app(Settings(internal_api_keys="test-key"))
     client = TestClient(app)
 
     response = client.get("/v1/health")
@@ -16,7 +16,7 @@ def test_health_does_not_require_api_key() -> None:
 
 
 def test_ready_requires_api_key() -> None:
-    app = create_app(Settings(internal_api_keys=["test-key"]))
+    app = create_app(Settings(internal_api_keys="test-key"))
     client = TestClient(app)
 
     response = client.get("/v1/ready")
@@ -26,7 +26,7 @@ def test_ready_requires_api_key() -> None:
 
 
 def test_ready_with_api_key() -> None:
-    app = create_app(Settings(internal_api_keys=["test-key"]))
+    app = create_app(Settings(internal_api_keys="test-key"))
     client = TestClient(app)
 
     response = client.get("/v1/ready", headers={"x-zam-ai-key": "test-key"})

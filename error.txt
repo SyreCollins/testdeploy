@@ -1,0 +1,14 @@
+{
+  "request_id": "7ddf1550-d65b-4605-acb7-639c4358c0ad",
+  "status": "error",
+  "error": {
+    "code": "authentication_failed",
+    "message": "Invalid or missing internal API key.",
+    "retryable": false,
+    "details": {
+
+    }
+  }
+}
+
+124
