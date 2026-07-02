@@ -12,3 +12,5 @@ build/
 *.egg-info/
 *.db
 *.sqlite3
+
+error.txt
