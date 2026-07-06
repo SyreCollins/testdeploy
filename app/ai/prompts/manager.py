@@ -42,6 +42,50 @@ class PromptManager:
 
         return builder.build(), None
 
+    def build_interaction_check_prompt(
+        self,
+        medications: list[dict],
+        evidence: list[dict],
+        patient_context: dict | None = None,
+        safety_requirements: str = "Never invent interactions or severity. Only use retrieved evidence.",
+    ) -> tuple[str, str | None]:
+        builder = PromptBuilder(self._registry)
+
+        for key in SYSTEM_SECTIONS:
+            builder.add(key)
+
+        builder.add(
+            "workflows.patient.interaction_checker",
+            medications=medications,
+            evidence=evidence,
+            patient_context=patient_context,
+            safety_requirements=safety_requirements,
+        )
+
+        return builder.build(), None
+
+    def build_drug_info_prompt(
+        self,
+        drug_name: str,
+        evidence: list[dict],
+        requested_sections: list[str] | None = None,
+        safety_requirements: str = "Never invent drug information. Only use retrieved evidence.",
+    ) -> tuple[str, str | None]:
+        builder = PromptBuilder(self._registry)
+
+        for key in SYSTEM_SECTIONS:
+            builder.add(key)
+
+        builder.add(
+            "workflows.patient.drug_info",
+            drug_name=drug_name,
+            evidence=evidence,
+            requested_sections=requested_sections or [],
+            safety_requirements=safety_requirements,
+        )
+
+        return builder.build(), None
+
     def build_symptom_guidance_prompt(
         self,
         symptoms: str,

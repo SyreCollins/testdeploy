@@ -115,6 +115,86 @@ class SymptomGuidanceRequest(BaseModel):
     input: SymptomGuidanceInput
 
 
+class InteractionMedication(BaseModel):
+    name: str = Field(min_length=1, examples=["warfarin"])
+    dose: str | None = None
+
+
+class InteractionCheckInput(BaseModel):
+    medications: list[InteractionMedication] = Field(min_length=2)
+    patient_context: PatientContext = Field(default_factory=PatientContext)
+
+
+class InteractionCheckRequest(BaseModel):
+    request_id: str | None = None
+    caller: CallerInfo = Field(default_factory=CallerInfo)
+    actor_context: ActorContext
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    locale: Locale = Field(default_factory=Locale)
+    input: InteractionCheckInput
+
+
+class InteractionResult(BaseModel):
+    medications: list[str]
+    severity: str
+    summary: str
+    recommended_action: str = "consult_clinician_or_pharmacist"
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+class InteractionCheckResult(BaseModel):
+    interactions: list[InteractionResult] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+
+
+class InteractionCheckResponse(BaseModel):
+    request_id: str | None = None
+    status: str = "success"
+    workflow: str = "interaction_check"
+    result: InteractionCheckResult | None = None
+    safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
+    audit: AuditMetadata = Field(default_factory=AuditMetadata)
+
+
+class DrugInfoInput(BaseModel):
+    drug_name: str = Field(min_length=1, examples=["Augmentin"])
+    requested_sections: list[str] | None = Field(default=None, examples=[["uses", "warnings", "side_effects"]])
+    country: str = "NG"
+
+
+class DrugInfoRequest(BaseModel):
+    request_id: str | None = None
+    caller: CallerInfo = Field(default_factory=CallerInfo)
+    actor_context: ActorContext
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    locale: Locale = Field(default_factory=Locale)
+    input: DrugInfoInput
+
+
+class NormalizedDrug(BaseModel):
+    input_name: str
+    generic_name: str | None = None
+    match_confidence: float = 0.0
+
+
+class DrugInfoResult(BaseModel):
+    normalized_drug: NormalizedDrug
+    sections: dict[str, str] = Field(default_factory=dict)
+
+
+class DrugInfoResponse(BaseModel):
+    request_id: str | None = None
+    status: str = "success"
+    workflow: str = "drug_info"
+    result: DrugInfoResult | None = None
+    safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
+    audit: AuditMetadata = Field(default_factory=AuditMetadata)
+
+
 class SymptomGuidanceResult(BaseModel):
     answer: str
     triage_level: str = "non_urgent"

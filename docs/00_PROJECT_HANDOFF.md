@@ -266,8 +266,8 @@ Status: 🔄 In progress
 Zam AI exposes internal HTTP endpoints consumed by the main backend:
 
 - **Implemented:** `GET /v1/health`, `GET /v1/ready`
-- **Built:** `POST /v1/ai/medical-qa`, `POST /v1/ai/symptom-guidance`
-- **Specified (not built):** `/v1/ai/drug-info`, `/v1/ai/interactions/check`, `/v1/ai/contraindications/check`, `/v1/ai/dosage/verify`, `/v1/ai/prescriptions/ocr-jobs`, `/v1/ai/prescriptions/explain`, `/v1/ai/reminders/parse-schedule`, `/v1/ai/doctor/assist`, `/v1/ai/pharmacy/assist`, `/v1/admin/evaluations/run`
+- **Built:** `POST /v1/ai/medical-qa`, `POST /v1/ai/symptom-guidance`, `POST /v1/ai/drug-info`, `POST /v1/ai/interactions/check`
+- **Specified (not built):** `/v1/ai/contraindications/check`, `/v1/ai/dosage/verify`, `/v1/ai/prescriptions/ocr-jobs`, `/v1/ai/prescriptions/explain`, `/v1/ai/reminders/parse-schedule`, `/v1/ai/doctor/assist`, `/v1/ai/pharmacy/assist`, `/v1/admin/evaluations/run`
 
 Auth: Internal API key via `X-Zam-AI-Key` header. User auth owned by the main backend.
 
