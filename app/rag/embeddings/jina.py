@@ -21,6 +21,7 @@ class JinaEmbeddingProvider(BaseEmbeddingProvider):
             api_key=api_key,
             dimensions=dimension,
             task="text-matching",
+            embed_batch_size=100,
         )
 
     def embed_query(self, text: str) -> list[float]:
