@@ -13,12 +13,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import get_settings
-from app.rag.embeddings.mock import MockEmbeddingProvider
-from app.rag.embeddings.voyage import VoyageEmbeddingProvider
+from app.rag.embeddings import get_embedding_provider
 from app.rag.registry import RagRegistry
 from app.rag.service import IngestionService
-from app.rag.vector_store.memory import MemoryVectorStore
-from app.rag.vector_store.pinecone import PineconeVectorStore
+from app.rag.vector_store import get_vector_store
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ingest-sources")
@@ -67,25 +65,13 @@ def main() -> None:
     registry = RagRegistry(database_url=settings.database_url)
     registry.init_db()
 
-    if settings.voyage_api_key:
-        embedding_provider = VoyageEmbeddingProvider(
-            api_key=settings.voyage_api_key,
-            model=settings.voyage_embedding_model,
-        )
-        logger.info(f"Using Voyage embedding ({settings.voyage_embedding_model})")
-    else:
-        embedding_provider = MockEmbeddingProvider()
-        logger.warning("No VOYAGE_API_KEY — using mock embeddings (not for production)")
+    embedding_provider = get_embedding_provider(settings)
+    vector_store = get_vector_store(settings)
 
-    if settings.pinecone_api_key:
-        vector_store = PineconeVectorStore(
-            api_key=settings.pinecone_api_key,
-            index_name=settings.pinecone_index_name,
-        )
-        logger.info(f"Using Pinecone index '{settings.pinecone_index_name}'")
-    else:
-        vector_store = MemoryVectorStore()
-        logger.warning("No PINECONE_API_KEY — using in-memory store (data lost on restart)")
+    logger.info(
+        f"Using embedding provider: {type(embedding_provider).__name__}, "
+        f"vector store: {type(vector_store).__name__}"
+    )
 
     svc = IngestionService(
         registry=registry,

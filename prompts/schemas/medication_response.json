@@ -1,0 +1,11 @@
+{
+  "answer": "string — main response text with inline citations",
+  "missing_context": ["list of missing information that would improve the answer"],
+  "follow_up_questions": ["list of suggested follow-up questions"],
+  "medical_claims": [
+    {
+      "claim": "string — specific medical claim made in the answer",
+      "citation_ids": ["list of citation IDs supporting this claim"]
+    }
+  ]
+}

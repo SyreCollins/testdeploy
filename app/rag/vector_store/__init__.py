@@ -1,5 +1,9 @@
 from app.rag.vector_store.base import BaseVectorStore
+from app.rag.vector_store.factory import get_vector_store
 from app.rag.vector_store.memory import MemoryVectorStore
-from app.rag.vector_store.pinecone import PineconeVectorStore
 
-__all__ = ["BaseVectorStore", "MemoryVectorStore", "PineconeVectorStore"]
+__all__ = [
+    "BaseVectorStore",
+    "MemoryVectorStore",
+    "get_vector_store",
+]

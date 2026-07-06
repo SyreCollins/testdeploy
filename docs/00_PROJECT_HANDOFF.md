@@ -16,7 +16,7 @@ Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and
 | **Documentation** | ✅ All 12 docs completed (DB design deferred — backend-owned) |
 | **Phase 0 — Scaffold** | ✅ Complete (API, middleware, logging, Docker, CI, lint, tests passing) |
 | **Phase 1 — Knowledge Platform** | ✅ Complete (ingestion + retrieval + 19 tests passing) |
-| **Phase 2+ — AI Core & User Workflows** | ❌ Not started |
+| **Phase 2+ — AI Core & User Workflows** | 🔄 In progress (Model Gateway done) |
 
 ---
 
@@ -41,6 +41,10 @@ The repo has both the full architecture documentation set and a working Phase 0 
 - `app/api/schemas/retrieval.py` — request/response models for search
 - `app/api/schemas/admin.py` — request/response models for admin endpoints
 - `app/rag/` — parsers (PDF, TXT, JSON, CSV, XLSX), normalizer, chunker, embeddings, vector store, registry (SQLModel), schemas (trust_tier, drug_entity_id), service.py (ingestion orchestrator)
+- `app/ai/gateway/` — Model Gateway (base ABC + Claude + Gemini + Mock providers + factory)
+- `app/ai/prompts/` — Prompt Manager (registry + builder + manager; loads YAML-frontmatter templates from `prompts/`)
+- `app/ai/safety/` — Safety Policy Engine (risk classification + rules + evaluator)
+- `prompts/` — 7 prompt template files (base components + medication info workflow + JSON schema)
 - `app/ai/`, `app/domains/`, `app/integrations/`, `app/evaluation/`, `app/workers/` — empty scaffolds
 - `tests/test_health.py` — 3 health endpoint tests
 - `tests/test_parsers.py` — 5 parser tests (CSV, XLSX, auto-selection, encoding)
@@ -54,7 +58,7 @@ The repo has both the full architecture documentation set and a working Phase 0 
 ```
 Phase 0: ████████████████████ 100%
 Phase 1: ████████████████████ 100%  (All 7 steps complete — 19 tests, 0 lint errors)
-Phase 2: ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 2: ██████████░░░░░░░░░░  45%  (Model Gateway + Safety Engine + Medical QA + Prompt Manager + Symptom Guidance done — 6 of 11 items remaining)
 Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
@@ -63,13 +67,18 @@ Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 - Ruff (lint), pytest (test)
 - Docker (containerisation)
 - Provider-abstraction patterns for parsers, embeddings, vector stores
+- Embedding providers backed by **LlamaIndex** (`llama-index-embeddings-*`)
+- Vector stores backed by **LlamaIndex** (`llama-index-vector-stores-*`)
 
 **Stack decisions made:**
-- Embedding provider: ✅ **Voyage voyage-3** (`VoyageEmbeddingProvider`, 1024-dim)
-- Vector database: ✅ **Pinecone** (`PineconeVectorStore`, serverless)
+- Embedding providers: ✅ **Voyage** (`voyage-3`, 1024-dim), **Jina** (`jina-embeddings-v3`, 1024-dim), **Gemini** (`embedding-001`, 768-dim) — all via LlamaIndex
+- Vector database: ✅ **Pinecone** (serverless) via LlamaIndex
+- Provider selection: ✅ Config-driven (`EMBEDDING_PROVIDER`, `VECTOR_STORE`) with auto-detect fallback
+
+**Stack decisions made:**
+- LLM providers: ✅ **Claude** (default, `claude-sonnet-4-20250514`), **Gemini** (fallback, `gemini-2.0-flash`) — via Model Gateway abstraction
 
 **Stack decisions pending:**
-- LLM provider(s) — Claude and Gemini targeted
 - OCR provider
 - Queue technology (RQ / Celery / Cloud Tasks)
 - Object storage
@@ -133,22 +142,26 @@ The medical knowledge platform is built and wired into the API:
 - Trust tier filtering, chunk type filtering, drug entity ID resolution
 - 19 tests, 0 lint errors
 
-### Next Phase: Phase 2 — AI Core
+### Phase 2 — AI Core
 
-1. **Conversation orchestrator** — intent routing, state management, response composition
-2. **Intent classifier** — detect medical intent vs general vs emergency
-3. **Risk classifier** — flag high-risk queries (pregnancy, paediatric, interactions)
-4. **Safety policy engine** — enforce retrieval-required, refusal, escalation rules
-5. **Context builder** — assemble retrieved chunks + patient context into prompt context
-6. **Prompt manager** — versioned prompt templates with model-specific overrides
-7. **Model gateway** — abstract LLM provider with retry, fallback, logging
-8. **Citation engine** — format citations from retrieved chunks
-9. **Grounding verifier** — verify response aligns with retrieved evidence
-10. **Confidence scorer** — score answer confidence from grounding + source tier
-11. **Audit trace writer** — log every request, response, model call, and decision
+Status: 🔄 In progress
+
+| # | Component | Status |
+|---|-----------|--------|
+| 1 | **Conversation orchestrator** — intent routing, state management, response composition | ❌ Not started |
+| 2 | **Intent classifier** — detect medical intent vs general vs emergency | ❌ Not started |
+| 3 | **Risk classifier** — flag high-risk queries (pregnancy, paediatric, interactions) | ❌ Not started |
+| 4 | **Safety policy engine** — enforce retrieval-required, refusal, escalation rules | ✅ Complete |
+| 5 | **Context builder** — assemble retrieved chunks + patient context into prompt context | ❌ Not started |
+| 6 | **Prompt manager** — versioned prompt templates with model-specific overrides | ✅ Complete |
+| 7 | **Model gateway** — abstract LLM provider with retry, fallback, logging | ✅ Complete |
+| 8 | **Citation engine** — format citations from retrieved chunks | ❌ Not started |
+| 9 | **Grounding verifier** — verify response aligns with retrieved evidence | ❌ Not started |
+| 10 | **Confidence scorer** — score answer confidence from grounding + source tier | ❌ Not started |
+| 11 | **Audit trace writer** — log every request, response, model call, and decision | ❌ Not started |
 
 ### Prerequisites for Phase 2
-- LLM provider decision (Claude / Gemini targeted)
+- ✅ LLM provider decision (Claude default, Gemini fallback)
 - Prompt policy document
 - AI metadata storage decision
 - First golden evaluation dataset
@@ -253,7 +266,8 @@ The medical knowledge platform is built and wired into the API:
 Zam AI exposes internal HTTP endpoints consumed by the main backend:
 
 - **Implemented:** `GET /v1/health`, `GET /v1/ready`
-- **Specified (not built):** `POST /v1/ai/medical-qa`, `/v1/ai/symptom-guidance`, `/v1/ai/drug-info`, `/v1/ai/interactions/check`, `/v1/ai/contraindications/check`, `/v1/ai/dosage/verify`, `/v1/ai/prescriptions/ocr-jobs`, `/v1/ai/prescriptions/explain`, `/v1/ai/reminders/parse-schedule`, `/v1/ai/doctor/assist`, `/v1/ai/pharmacy/assist`, `/v1/admin/evaluations/run`
+- **Built:** `POST /v1/ai/medical-qa`, `POST /v1/ai/symptom-guidance`
+- **Specified (not built):** `/v1/ai/drug-info`, `/v1/ai/interactions/check`, `/v1/ai/contraindications/check`, `/v1/ai/dosage/verify`, `/v1/ai/prescriptions/ocr-jobs`, `/v1/ai/prescriptions/explain`, `/v1/ai/reminders/parse-schedule`, `/v1/ai/doctor/assist`, `/v1/ai/pharmacy/assist`, `/v1/admin/evaluations/run`
 
 Auth: Internal API key via `X-Zam-AI-Key` header. User auth owned by the main backend.
 
@@ -309,6 +323,17 @@ High-risk intents (emergency, pregnancy, paediatric, interactions, contraindicat
 | 2026-07-02 | Voyage voyage-3 as embedding provider (replaced initial OpenAI pick) | Accepted |
 | 2026-07-02 | Pinecone (serverless) as vector database | Accepted |
 | 2026-07-02 | Real providers auto-selected when API keys present; mock fallback for local dev | Accepted |
+| 2026-07-03 | LlamaIndex integration: embedding providers (Voyage, Jina, Gemini) and vector stores (Pinecone) use LlamaIndex under the hood | Accepted |
+| 2026-07-03 | Provider factory pattern: `EMBEDDING_PROVIDER` and `VECTOR_STORE` env vars select active provider; auto-detect based on available API keys | Accepted |
+| 2026-07-03 | Jina AI and Google Gemini added as embedding provider options | Accepted |
+| 2026-07-03 | Qdrant added as vector store option (via direct qdrant-client SDK) | Accepted |
+| 2026-07-06 | Phase 2 started — Model Gateway built (base ABC + Claude + Gemini + Mock + factory) | Accepted |
+| 2026-07-06 | Claude selected as default LLM provider (`claude-sonnet-4-20250514`); Gemini as fallback (`gemini-2.0-flash`) | Accepted |
+| 2026-07-06 | Safety Policy Engine built — emergency keyword detection, high-risk classification, retrieval-required policy, unsafe request refusal | Accepted |
+| 2026-07-06 | `POST /v1/ai/medical-qa` endpoint built — full pipeline: safety check → RAG retrieval → LLM generation → structured response with citations | Accepted |
+| 2026-07-06 | Prompt Manager built — file-based template registry (YAML frontmatter + Markdown), PromptBuilder for composable assembly, PromptManager for workflow orchestration; refactored medical-qa endpoint to use templates | Accepted |
+| 2026-07-06 | Prompt templates created — 8 template files under `prompts/` (system, medical_rules, safety_rules, refusal_rules, citation_rules, output_rules, medication_info workflow, symptom_checker workflow) | Accepted |
+| 2026-07-06 | `POST /v1/ai/symptom-guidance` endpoint built — safety check → LLM triage → structured response with triage level | Accepted |
 
 ---
 

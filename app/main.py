@@ -2,6 +2,8 @@ import logging
 
 from fastapi import FastAPI
 
+from app.ai.prompts import PromptManager
+from app.api.routes.ai import router as ai_router
 from app.api.routes.health import router as health_router
 from app.api.routes.retrieval import router as retrieval_router
 from app.core.config import Settings, get_settings
@@ -9,12 +11,10 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware.api_key import InternalApiKeyMiddleware
 from app.core.middleware.request_id import RequestIdMiddleware
-from app.rag.embeddings.mock import MockEmbeddingProvider
-from app.rag.embeddings.voyage import VoyageEmbeddingProvider
+from app.rag.embeddings import get_embedding_provider
 from app.rag.registry import RagRegistry
 from app.rag.service import RetrievalService
-from app.rag.vector_store.memory import MemoryVectorStore
-from app.rag.vector_store.pinecone import PineconeVectorStore
+from app.rag.vector_store import get_vector_store
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -36,25 +36,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     registry = RagRegistry(database_url=settings.database_url)
     registry.init_db()
 
-    if settings.voyage_api_key:
-        embedding_provider = VoyageEmbeddingProvider(
-            api_key=settings.voyage_api_key,
-            model=settings.voyage_embedding_model,
-        )
-        app.state.logger.info(f"Using Voyage embedding provider ({settings.voyage_embedding_model})")
-    else:
-        embedding_provider = MockEmbeddingProvider()
-        app.state.logger.warning("No VOYAGE_API_KEY set — using MockEmbeddingProvider")
+    embedding_provider = get_embedding_provider(settings)
+    vector_store = get_vector_store(settings)
 
-    if settings.pinecone_api_key:
-        vector_store = PineconeVectorStore(
-            api_key=settings.pinecone_api_key,
-            index_name=settings.pinecone_index_name,
-        )
-        app.state.logger.info(f"Using Pinecone vector store (index: {settings.pinecone_index_name})")
-    else:
-        vector_store = MemoryVectorStore()
-        app.state.logger.warning("No PINECONE_API_KEY set — using MemoryVectorStore")
+    app.state.logger.info(
+        f"Using embedding provider: {type(embedding_provider).__name__}, "
+        f"vector store: {type(vector_store).__name__}"
+    )
+
+    app.state.prompt_manager = PromptManager()
 
     app.state.retrieval_service = RetrievalService(
         registry=registry,
@@ -69,8 +59,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router, prefix="/v1", tags=["system"])
     app.include_router(retrieval_router, prefix="/v1", tags=["retrieval"])
+    app.include_router(ai_router, prefix="/v1", tags=["ai"])
 
     return app
 
 
-app = create_app()
+if __name__ == "__main__":
+    app = create_app()

@@ -19,10 +19,26 @@ class Settings(BaseSettings):
     internal_api_keys: str = ""
     readiness_check_dependencies: bool = False
     database_url: str = "sqlite:///./rag_registry.db"
+    embedding_provider: str = ""
     voyage_api_key: str | None = None
     voyage_embedding_model: str = "voyage-3"
+    jina_api_key: str | None = None
+    gemini_api_key: str | None = None
+
+    embedding_batch_concurrency: int = 5
+
+    model_provider: str = ""
+    claude_api_key: str | None = None
+    claude_model: str = "claude-sonnet-4-20250514"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
+
+    vector_store: str = ""
     pinecone_api_key: str | None = None
     pinecone_index_name: str = "zam-ai"
+    qdrant_url: str | None = None
+    qdrant_api_key: str | None = None
+    qdrant_collection_name: str = "zam-ai"
 
     @property
     def internal_api_keys_list(self) -> list[str]:

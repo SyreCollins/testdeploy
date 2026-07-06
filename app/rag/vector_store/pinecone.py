@@ -1,7 +1,13 @@
 import logging
 from typing import Any
 
-import pinecone
+from llama_index.core.schema import TextNode
+from llama_index.core.vector_stores import (
+    MetadataFilter,
+    MetadataFilters,
+    VectorStoreQuery,
+)
+from llama_index.vector_stores.pinecone import PineconeVectorStore as LiPineconeVectorStore
 
 from app.rag.schemas import DocumentChunk
 from app.rag.vector_store.base import BaseVectorStore
@@ -15,26 +21,26 @@ class PineconeVectorStore(BaseVectorStore):
         api_key: str,
         index_name: str,
     ) -> None:
-        self._api_key = api_key
-        self._index_name = index_name
-        self._client: pinecone.Pinecone | None = None
-        self._index: pinecone.Index | None = None
-
-    def _ensure_index(self) -> pinecone.Index:
-        if self._index is None:
-            logger.info(f"Connecting to Pinecone index '{self._index_name}'")
-            self._client = pinecone.Pinecone(api_key=self._api_key)
-            self._index = self._client.Index(self._index_name)
-        return self._index
+        logger.info(f"Connecting to Pinecone index '{index_name}'")
+        self._store = LiPineconeVectorStore.from_params(
+            api_key=api_key,
+            index_name=index_name,
+            text_key="text_content",
+        )
 
     def upsert_chunks(self, chunks: list[DocumentChunk], embeddings: list[list[float]]) -> None:
-        index = self._ensure_index()
-        logger.info(f"Upserting {len(chunks)} chunks into Pinecone index '{self._index_name}'")
-        vectors = []
+        logger.info(f"Upserting {len(chunks)} chunks into Pinecone")
+        nodes = []
         for chunk, embedding in zip(chunks, embeddings, strict=False):
             metadata = self._build_metadata(chunk)
-            vectors.append((chunk.id, embedding, metadata))
-        index.upsert(vectors=vectors)
+            node = TextNode(
+                id_=chunk.id,
+                text=chunk.text_content,
+                embedding=embedding,
+                metadata=metadata,
+            )
+            nodes.append(node)
+        self._store.add(nodes)
 
     def search(
         self,
@@ -43,25 +49,29 @@ class PineconeVectorStore(BaseVectorStore):
         limit: int = 5,
         generic_name_filter: str | None = None,
     ) -> list[dict]:
-        filter_dict: dict[str, Any] | None = None
+        filters = None
         if generic_name_filter:
-            filter_dict = {"generic_name": generic_name_filter.lower()}
+            filters = MetadataFilters(
+                filters=[
+                    MetadataFilter(key="generic_name", value=generic_name_filter.lower()),
+                ],
+            )
 
-        index = self._ensure_index()
-        response = index.query(
-            vector=query_vector,
-            top_k=limit,
-            include_metadata=True,
-            filter=filter_dict,
+        query = VectorStoreQuery(
+            query_embedding=query_vector,
+            similarity_top_k=limit,
+            filters=filters,
         )
 
+        result = self._store.query(query)
+
         results = []
-        for match in response.matches:
-            meta = match.metadata or {}
+        for node, score in zip(result.nodes or [], result.similarities or [], strict=False):
+            meta = node.metadata or {}
             results.append({
-                "chunk_id": match.id,
-                "text_content": meta.get("text_content", ""),
-                "score": round(match.score, 4),
+                "chunk_id": node.node_id,
+                "text_content": node.text or "",
+                "score": round(score, 4),
                 "metadata": {
                     "document_id": meta.get("document_id"),
                     "section_path": meta.get("section_path"),
@@ -78,7 +88,6 @@ class PineconeVectorStore(BaseVectorStore):
     @staticmethod
     def _build_metadata(chunk: DocumentChunk) -> dict[str, Any]:
         meta = {
-            "text_content": chunk.text_content,
             "document_id": str(chunk.document_id),
             "section_path": chunk.section_path,
             "page_number": chunk.page_number,

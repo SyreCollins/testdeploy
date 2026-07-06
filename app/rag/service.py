@@ -1,8 +1,10 @@
 import hashlib
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from app.core.config import get_settings
 from app.rag.chunker import Chunker
 from app.rag.embeddings.base import BaseEmbeddingProvider
 from app.rag.embeddings.mock import MockEmbeddingProvider
@@ -76,9 +78,10 @@ class IngestionService:
 
         parser = get_parser(file_path)
         raw_sections = parser.parse(file_path)
+        logger.info(f"Parsed {len(raw_sections)} sections from {resolved_title}")
 
         all_chunks: list[DocumentChunk] = []
-        for section in raw_sections:
+        for i, section in enumerate(raw_sections):
             section = self._normalize_section(section)
             chunks = self.chunker.chunk_section(section, document.id)
             for chunk in chunks:
@@ -87,12 +90,38 @@ class IngestionService:
                     chunk.generic_name, chunk.brand_names
                 )
             all_chunks.extend(chunks)
+            if (i + 1) % 500 == 0:
+                logger.info(f"  Chunked {i + 1}/{len(raw_sections)} sections ({len(all_chunks)} chunks so far)")
+
+        logger.info(f"Generated {len(all_chunks)} chunks from {resolved_title}")
 
         if all_chunks:
             texts = [c.text_content for c in all_chunks]
-            embeddings = self.embedding_provider.embed_documents(texts)
+            BATCH_SIZE = 100
+            batches = [texts[i:i + BATCH_SIZE] for i in range(0, len(texts), BATCH_SIZE)]
+            all_embeddings: list[list[float]] = []
+            concurrency = get_settings().embedding_batch_concurrency
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                future_map = {
+                    executor.submit(self.embedding_provider.embed_documents, batch): idx
+                    for idx, batch in enumerate(batches)
+                }
+                results = [None] * len(batches)
+                for future in as_completed(future_map):
+                    idx = future_map[future]
+                    results[idx] = future.result()
+                    start = idx * BATCH_SIZE
+                    end = min(start + BATCH_SIZE, len(texts))
+                    logger.info(
+                        f"  Embedding batch {idx + 1}/{len(batches)} "
+                        f"({start}-{end} of {len(texts)})"
+                    )
+            for r in results:
+                all_embeddings.extend(r)
+            logger.info(f"Embedded {len(all_embeddings)} chunks")
             self.registry.add_chunks(all_chunks)
-            self.vector_store.upsert_chunks(all_chunks, embeddings)
+            self.vector_store.upsert_chunks(all_chunks, all_embeddings)
+            logger.info(f"Upserted {len(all_embeddings)} chunks to vector store")
 
         self.registry.update_document_status(document.id, "parsed")
         logger.info(

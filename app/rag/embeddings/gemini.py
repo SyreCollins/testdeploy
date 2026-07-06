@@ -1,25 +1,25 @@
 import logging
 
-from llama_index.embeddings.voyageai import VoyageEmbedding as LiVoyageEmbedding
+from llama_index.embeddings.gemini import GeminiEmbedding as LiGeminiEmbedding
 
 from app.rag.embeddings.base import BaseEmbeddingProvider
 
-logger = logging.getLogger("zam-ai-core-api.voyage-embedding")
+logger = logging.getLogger("zam-ai-core-api.gemini-embedding")
 
 
-class VoyageEmbeddingProvider(BaseEmbeddingProvider):
+class GeminiEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(
         self,
         api_key: str,
-        model: str = "voyage-3",
-        dimension: int = 1024,
+        model: str = "models/embedding-001",
+        dimension: int = 768,
     ) -> None:
         self.dimension = dimension
-        logger.info(f"Initializing VoyageEmbeddingProvider (model={model})")
-        self._model = LiVoyageEmbedding(
+        logger.info(f"Initializing GeminiEmbeddingProvider (model={model})")
+        self._model = LiGeminiEmbedding(
             model_name=model,
-            voyage_api_key=api_key,
-            output_dimension=dimension,
+            api_key=api_key,
+            task_type="retrieval_document",
         )
 
     def embed_query(self, text: str) -> list[float]:

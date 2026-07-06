@@ -1,25 +1,26 @@
 import logging
 
-from llama_index.embeddings.voyageai import VoyageEmbedding as LiVoyageEmbedding
+from llama_index.embeddings.jinaai import JinaEmbedding as LiJinaEmbedding
 
 from app.rag.embeddings.base import BaseEmbeddingProvider
 
-logger = logging.getLogger("zam-ai-core-api.voyage-embedding")
+logger = logging.getLogger("zam-ai-core-api.jina-embedding")
 
 
-class VoyageEmbeddingProvider(BaseEmbeddingProvider):
+class JinaEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(
         self,
         api_key: str,
-        model: str = "voyage-3",
+        model: str = "jina-embeddings-v3",
         dimension: int = 1024,
     ) -> None:
         self.dimension = dimension
-        logger.info(f"Initializing VoyageEmbeddingProvider (model={model})")
-        self._model = LiVoyageEmbedding(
-            model_name=model,
-            voyage_api_key=api_key,
-            output_dimension=dimension,
+        logger.info(f"Initializing JinaEmbeddingProvider (model={model})")
+        self._model = LiJinaEmbedding(
+            model=model,
+            api_key=api_key,
+            dimensions=dimension,
+            task="text-matching",
         )
 
     def embed_query(self, text: str) -> list[float]:
