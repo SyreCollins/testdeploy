@@ -16,7 +16,7 @@ Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and
 | **Documentation** | ✅ All 12 docs completed (DB design deferred — backend-owned) |
 | **Phase 0 — Scaffold** | ✅ Complete (API, middleware, logging, Docker, CI, lint, tests passing) |
 | **Phase 1 — Knowledge Platform** | ✅ Complete (ingestion + retrieval + 19 tests passing) |
-| **Phase 2+ — AI Core & User Workflows** | 🔄 In progress (Model Gateway done) |
+| **Phase 2+ — AI Core & User Workflows** | 🔄 In progress (Conversation Orchestrator built) |
 
 ---
 
@@ -33,23 +33,25 @@ The repo has both the full architecture documentation set and a working Phase 0 
 - `docs/05_DATABASE_DESIGN.md` — **deferred** (backend owns the application DB)
 
 **Code:**
-- `app/main.py` — FastAPI application factory
+- `app/main.py` — FastAPI application factory (wires orchestrator into app state)
 - `app/core/` — config, errors, logging, middleware (API key, request ID)
 - `app/api/routes/health.py` — `GET /v1/health` and `GET /v1/ready`
-- `app/api/routes/admin.py` — `POST /v1/admin/sources`, `POST /v1/admin/documents/ingest`
 - `app/api/routes/retrieval.py` — `POST /v1/retrieval/search`
 - `app/api/schemas/retrieval.py` — request/response models for search
-- `app/api/schemas/admin.py` — request/response models for admin endpoints
 - `app/rag/` — parsers (PDF, TXT, JSON, CSV, XLSX), normalizer, chunker, embeddings, vector store, registry (SQLModel), schemas (trust_tier, drug_entity_id), service.py (ingestion orchestrator)
+- `app/ai/orchestrator/` — **Conversation Orchestrator** (models, intent classifier, orchestrator with full pipeline: safety → retrieval → prompt → model → response)
 - `app/ai/gateway/` — Model Gateway (base ABC + Claude + Gemini + Mock providers + factory)
 - `app/ai/prompts/` — Prompt Manager (registry + builder + manager; loads YAML-frontmatter templates from `prompts/`)
 - `app/ai/safety/` — Safety Policy Engine (risk classification + rules + evaluator)
-- `prompts/` — 7 prompt template files (base components + medication info workflow + JSON schema)
-- `app/ai/`, `app/domains/`, `app/integrations/`, `app/evaluation/`, `app/workers/` — empty scaffolds
+- `app/ai/scoring/confidence.py` — **ConfidenceScorer** (retrieval scoring with trust tier weighting + coverage factor; grounding and overall score stubs)
+- `app/api/composer.py` — **ResponseComposer** (centralizes WorkflowResult → Pydantic response mapping for all 4 AI endpoints)
+- `app/api/routes/ai.py` — 4 AI endpoints that delegate to orchestrator + composer (~8 lines each, no duplicated logic)
+- `prompts/` — 11 prompt template files (base components + patient workflows + JSON schema)
+- `app/domains/`, `app/integrations/`, `app/evaluation/`, `app/workers/` — empty scaffolds
+- `tests/test_orchestrator.py` — 13 orchestrator tests (intent classification, pipeline)
 - `tests/test_health.py` — 3 health endpoint tests
 - `tests/test_parsers.py` — 5 parser tests (CSV, XLSX, auto-selection, encoding)
 - `tests/test_ingestion.py` — 5 service tests (ingest, dedup, search, filters, entity ID)
-- `tests/test_admin_api.py` — 6 API tests (register, ingest, auth, search, filters, errors)
 - `.github/workflows/ci.yml` — lint + test + Docker build
 - `Dockerfile`, `pyproject.toml`, `.env.example`
 
@@ -58,7 +60,7 @@ The repo has both the full architecture documentation set and a working Phase 0 
 ```
 Phase 0: ████████████████████ 100%
 Phase 1: ████████████████████ 100%  (All 7 steps complete — 19 tests, 0 lint errors)
-Phase 2: ██████████░░░░░░░░░░  45%  (Model Gateway + Safety Engine + Medical QA + Prompt Manager + Symptom Guidance done — 6 of 11 items remaining)
+Phase 2: ██████████████████░░  80%  (ConfidenceScorer + ResponseComposer added — 3 of 11 items remaining)
 Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
@@ -148,16 +150,16 @@ Status: 🔄 In progress
 
 | # | Component | Status |
 |---|-----------|--------|
-| 1 | **Conversation orchestrator** — intent routing, state management, response composition | ❌ Not started |
-| 2 | **Intent classifier** — detect medical intent vs general vs emergency | ❌ Not started |
-| 3 | **Risk classifier** — flag high-risk queries (pregnancy, paediatric, interactions) | ❌ Not started |
+| 1 | **Conversation orchestrator** — intent routing, state management, response composition | ✅ Complete |
+| 2 | **Intent classifier** — detect medical intent vs general vs emergency | ✅ Complete |
+| 3 | **Risk classifier** — flag high-risk queries (pregnancy, paediatric, interactions) | 🔄 Merged into Safety Engine |
 | 4 | **Safety policy engine** — enforce retrieval-required, refusal, escalation rules | ✅ Complete |
-| 5 | **Context builder** — assemble retrieved chunks + patient context into prompt context | ❌ Not started |
+| 5 | **Context builder** — assemble retrieved chunks + patient context into prompt context | ✅ Built into orchestrator |
 | 6 | **Prompt manager** — versioned prompt templates with model-specific overrides | ✅ Complete |
 | 7 | **Model gateway** — abstract LLM provider with retry, fallback, logging | ✅ Complete |
 | 8 | **Citation engine** — format citations from retrieved chunks | ❌ Not started |
 | 9 | **Grounding verifier** — verify response aligns with retrieved evidence | ❌ Not started |
-| 10 | **Confidence scorer** — score answer confidence from grounding + source tier | ❌ Not started |
+| 10 | **Confidence scorer** — score answer confidence from grounding + source tier | ✅ Complete |
 | 11 | **Audit trace writer** — log every request, response, model call, and decision | ❌ Not started |
 
 ### Prerequisites for Phase 2
@@ -334,17 +336,22 @@ High-risk intents (emergency, pregnancy, paediatric, interactions, contraindicat
 | 2026-07-06 | Prompt Manager built — file-based template registry (YAML frontmatter + Markdown), PromptBuilder for composable assembly, PromptManager for workflow orchestration; refactored medical-qa endpoint to use templates | Accepted |
 | 2026-07-06 | Prompt templates created — 8 template files under `prompts/` (system, medical_rules, safety_rules, refusal_rules, citation_rules, output_rules, medication_info workflow, symptom_checker workflow) | Accepted |
 | 2026-07-06 | `POST /v1/ai/symptom-guidance` endpoint built — safety check → LLM triage → structured response with triage level | Accepted |
+| 2026-07-06 | `POST /v1/ai/drug-info` and `/v1/ai/interactions/check` endpoints built; 9 prompt templates added | Accepted |
+| 2026-07-06 | Fix Jina embedding concurrency — set `embed_batch_size=100` | Accepted |
+| 2026-07-07 | **ConversationOrchestrator** built — `app/ai/orchestrator/` with IntentClassifier (rule-based, 7 intent types), workflow methods for all 4 AI endpoints, lazy model_provider init | Accepted |
+| 2026-07-07 | Refactored `app/api/routes/ai.py` — 4 endpoints delegate to orchestrator; removed duplicated pipeline logic (~250 lines saved); pipeline lives in one place | Accepted |
+| 2026-07-07 | Orchestrator wired into `app/main.py` as `app.state.orchestrator`; model provider handles missing API keys gracefully at startup | Accepted |
+| 2026-07-07 | **ConfidenceScorer** (`app/ai/scoring/confidence.py`) — trust-tier-weighted retrieval scoring with coverage factor; grounding stub for future use; integrated into orchestrator | Accepted |
+| 2026-07-07 | **ResponseComposer** (`app/api/composer.py`) — centralizes WorkflowResult→Pydantic mapping; routes reduced to ~8 lines each | Accepted |
 
 ---
 
 ## 14. Next Action
 
-Review this handoff with the backend engineer and confirm the backend-to-AI integration contract:
+Build remaining Phase 2 components:
 
-- API key format and header conventions
-- Request/response envelope design (see `docs/06_API_SPECIFICATION.md`)
-- What context the backend will pass (patient fields, consent flags, role)
-- Whether Zam AI gets its own metadata store
-- How AI audit traces are retained
-- First medical source to ingest
-- First MVP AI workflow
+1. **Citation engine** — extract citation formatting/routing into a dedicated module
+2. **Grounding verifier** — verify LLM response aligns with retrieved evidence
+3. **Audit trace writer** — log every request, response, model call, and decision
+
+Or begin Phase 3 patient-facing endpoints (contraindications check, dosage verification, prescription endpoints).

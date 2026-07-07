@@ -2,6 +2,8 @@ import logging
 
 from fastapi import FastAPI
 
+from app.ai.gateway import get_model_provider
+from app.ai.orchestrator import ConversationOrchestrator
 from app.ai.prompts import PromptManager
 from app.api.routes.ai import router as ai_router
 from app.api.routes.health import router as health_router
@@ -50,6 +52,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         registry=registry,
         embedding_provider=embedding_provider,
         vector_store=vector_store,
+    )
+
+    try:
+        model_provider = get_model_provider(settings)
+        app.state.logger.info(
+            f"Using model provider: {type(model_provider).__name__}"
+        )
+    except Exception:
+        app.state.logger.warning("No model provider configured — will use per-request fallback")
+        model_provider = None
+
+    app.state.orchestrator = ConversationOrchestrator(
+        retrieval_service=app.state.retrieval_service,
+        prompt_manager=app.state.prompt_manager,
+        model_provider=model_provider,
+        settings=settings,
     )
 
     register_exception_handlers(app)

@@ -395,3 +395,6 @@ candidates.
 | 2026-06-29 | Initial decision log created. | Draft |
 | 2026-07-01 | Phase 1 complete — mock embeddings + in-memory vector store used; real provider/DB pending | Accepted |
 | 2026-07-01 | ⏰ NEXT: Pick embedding provider + vector database before Phase 2 | Pending |
+| 2026-07-07 | ConversationOrchestrator built — `app/ai/orchestrator/` with IntentClassifier, workflow methods, lazy model_provider; 4 AI endpoints refactored to delegate to orchestrator | Accepted |
+| 2026-07-07 | ConfidenceScorer built — `app/ai/scoring/confidence.py` with trust-tier-weighted retrieval scoring, coverage saturation factor | Accepted |
+| 2026-07-07 | ResponseComposer built — `app/api/composer.py` centralizes WorkflowResult→Pydantic mapping for all 4 AI endpoints | Accepted |
