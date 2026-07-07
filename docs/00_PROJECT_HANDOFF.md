@@ -354,4 +354,31 @@ Build remaining Phase 2 components:
 2. **Grounding verifier** — verify LLM response aligns with retrieved evidence
 3. **Audit trace writer** — log every request, response, model call, and decision
 
-Or begin Phase 3 patient-facing endpoints (contraindications check, dosage verification, prescription endpoints).
+Or build Phase 4 endpoints that don't depend on Phase 2 completion (same pattern as existing ones):
+- `POST /v1/ai/contraindications/check`
+- `POST /v1/ai/dosage/verify`
+- `POST /v1/ai/prescriptions/explain`
+
+---
+
+## 15. Open Concerns
+
+### 15.1 Backend Data Dependencies
+
+Zam AI does not access the backend's database. Patient context (age, conditions, allergies, medications) is passed per-request via `PatientContext` in the request body. The backend controls what it sends via `context_scope` in `AuthorizationContext`.
+
+If richer context is needed (lab results, prescription history, pharmacy inventory), the backend must extend its request payload — Zam AI does not fetch it directly. This is by design (Decision 002).
+
+### 15.2 Ingestion Script Reliability
+
+The ingestion script (`scripts/ingest_sources.py`) uses `ThreadPoolExecutor` to send embedding batches concurrently, controlled by `ZAM_AI_EMBEDDING_BATCH_CONCURRENCY` (default 5). This can cause rate-limit errors with some providers. If unstable, switch to sequential processing by setting the env var to 1.
+
+### 15.3 Performance Bottlenecks
+
+| Layer | Bottleneck | Mitigation |
+|-------|-----------|------------|
+| Ingestion | Embedding API calls (network I/O) | Sequential batches with `concurrency=1`; rate-limit retries already in Voyage provider |
+| Inference | LLM API calls (network I/O) | Already async; model provider is a singleton so connections are reused |
+| Retrieval | `embed_query` is synchronous | Should be made async to avoid blocking the event loop during API calls |
+| API | Chunking/storing during ingestion | Not an API concern — ingestion is a CLI script |
+| Overall | No response caching | High-likelihood option: add a simple in-memory or Redis cache for frequent search queries |
