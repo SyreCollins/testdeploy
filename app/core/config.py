@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     jina_api_key: str | None = None
     gemini_api_key: str | None = None
 
-    embedding_batch_concurrency: int = 5
+    embedding_batch_timeout: int = 180
 
     model_provider: str = ""
     claude_api_key: str | None = None

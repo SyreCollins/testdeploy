@@ -60,7 +60,7 @@ The repo has both the full architecture documentation set and a working Phase 0 
 ```
 Phase 0: ████████████████████ 100%
 Phase 1: ████████████████████ 100%  (All 7 steps complete — 19 tests, 0 lint errors)
-Phase 2: ██████████████████░░  80%  (ConfidenceScorer + ResponseComposer added — 3 of 11 items remaining)
+Phase 2: ███████████████████░  85%  (Orchestrator built + ConfidenceScorer + ResponseComposer + async migration — 2 of 11 items remaining)
 Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
@@ -343,6 +343,8 @@ High-risk intents (emergency, pregnancy, paediatric, interactions, contraindicat
 | 2026-07-07 | Orchestrator wired into `app/main.py` as `app.state.orchestrator`; model provider handles missing API keys gracefully at startup | Accepted |
 | 2026-07-07 | **ConfidenceScorer** (`app/ai/scoring/confidence.py`) — trust-tier-weighted retrieval scoring with coverage factor; grounding stub for future use; integrated into orchestrator | Accepted |
 | 2026-07-07 | **ResponseComposer** (`app/api/composer.py`) — centralizes WorkflowResult→Pydantic mapping; routes reduced to ~8 lines each | Accepted |
+| 2026-07-07 | **Async migration** — `embed_query` async across all 4 providers; vector store `search` async across all 3 stores; `RetrievalService.search` async; all callers updated | Accepted |
+| 2026-07-07 | **Ingestion hang fix** — removed `ThreadPoolExecutor` (froze forever on hung batch); replaced with sequential processing, per-batch timeout (daemon thread, 180s default), 3x retry with exponential backoff | Accepted |
 
 ---
 
@@ -371,14 +373,14 @@ If richer context is needed (lab results, prescription history, pharmacy invento
 
 ### 15.2 Ingestion Script Reliability
 
-The ingestion script (`scripts/ingest_sources.py`) uses `ThreadPoolExecutor` to send embedding batches concurrently, controlled by `ZAM_AI_EMBEDDING_BATCH_CONCURRENCY` (default 5). This can cause rate-limit errors with some providers. If unstable, switch to sequential processing by setting the env var to 1.
+The ingestion script processes embedding batches sequentially with per-batch timeout and retry. Controlled by `ZAM_AI_EMBEDDING_BATCH_TIMEOUT` (default 180s). Each batch retries up to 3 times with exponential backoff (1s, 2s, 4s).
 
 ### 15.3 Performance Bottlenecks
 
 | Layer | Bottleneck | Mitigation |
 |-------|-----------|------------|
-| Ingestion | Embedding API calls (network I/O) | Sequential batches with `concurrency=1`; rate-limit retries already in Voyage provider |
+| Ingestion | Embedding API calls (network I/O) | Sequential batches with per-batch timeout (default 180s) and 3x retry with exponential backoff; rate-limit retries already in Voyage provider |
 | Inference | LLM API calls (network I/O) | Already async; model provider is a singleton so connections are reused |
-| Retrieval | `embed_query` is synchronous | Should be made async to avoid blocking the event loop during API calls |
+| Retrieval / Embedding | ~~`embed_query` is synchronous~~ | ✅ **Fixed 2026-07-07** — `embed_query` is now async via `asyncio.to_thread()`; vector store `search` also async; event loop no longer blocked |
 | API | Chunking/storing during ingestion | Not an API concern — ingestion is a CLI script |
 | Overall | No response caching | High-likelihood option: add a simple in-memory or Redis cache for frequent search queries |

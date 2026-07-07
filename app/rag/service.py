@@ -1,7 +1,8 @@
 import hashlib
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import time
 from typing import Any
 
 from app.core.config import get_settings
@@ -100,24 +101,54 @@ class IngestionService:
             BATCH_SIZE = 100
             batches = [texts[i:i + BATCH_SIZE] for i in range(0, len(texts), BATCH_SIZE)]
             all_embeddings: list[list[float]] = []
-            concurrency = get_settings().embedding_batch_concurrency
-            with ThreadPoolExecutor(max_workers=concurrency) as executor:
-                future_map = {
-                    executor.submit(self.embedding_provider.embed_documents, batch): idx
-                    for idx, batch in enumerate(batches)
-                }
-                results = [None] * len(batches)
-                for future in as_completed(future_map):
-                    idx = future_map[future]
-                    results[idx] = future.result()
-                    start = idx * BATCH_SIZE
-                    end = min(start + BATCH_SIZE, len(texts))
-                    logger.info(
-                        f"  Embedding batch {idx + 1}/{len(batches)} "
-                        f"({start}-{end} of {len(texts)})"
-                    )
-            for r in results:
-                all_embeddings.extend(r)
+            settings = get_settings()
+            timeout = settings.embedding_batch_timeout
+            max_retries = 3
+
+            for idx, batch in enumerate(batches):
+                logger.info(
+                    f"  Embedding batch {idx + 1}/{len(batches)} "
+                    f"({len(batch)} chunks)..."
+                )
+
+                for attempt in range(max_retries):
+                    output: list[list[list[float]] | None] = [None]
+                    exc: list[BaseException | None] = [None]
+
+                    def _embed(b=batch, out=output, ex=exc):
+                        try:
+                            out[0] = self.embedding_provider.embed_documents(b)
+                        except BaseException as e:
+                            ex[0] = e
+
+                    t = threading.Thread(target=_embed, daemon=True)
+                    t.start()
+                    t.join(timeout=timeout)
+
+                    if not t.is_alive() and exc[0] is None:
+                        all_embeddings.extend(output[0])
+                        break
+
+                    if t.is_alive():
+                        msg = f"  Batch {idx+1} timed out (attempt {attempt+1}/{max_retries})"
+                    else:
+                        msg = f"  Batch {idx+1} failed: {exc[0]} (attempt {attempt+1}/{max_retries})"
+                    logger.warning(msg)
+
+                    if attempt < max_retries - 1:
+                        wait = 2 ** attempt
+                        logger.info(f"  Retrying in {wait}s...")
+                        time.sleep(wait)
+                else:
+                    if t.is_alive():
+                        raise TimeoutError(
+                            f"Batch {idx+1} did not complete after "
+                            f"{max_retries} attempts ({timeout}s each)"
+                        )
+                    raise exc[0]  # type: ignore[arg-type]
+
+                logger.info(f"  Batch {idx + 1}/{len(batches)} complete")
+
             logger.info(f"Embedded {len(all_embeddings)} chunks")
             self.registry.add_chunks(all_chunks)
             self.vector_store.upsert_chunks(all_chunks, all_embeddings)

@@ -398,3 +398,5 @@ candidates.
 | 2026-07-07 | ConversationOrchestrator built — `app/ai/orchestrator/` with IntentClassifier, workflow methods, lazy model_provider; 4 AI endpoints refactored to delegate to orchestrator | Accepted |
 | 2026-07-07 | ConfidenceScorer built — `app/ai/scoring/confidence.py` with trust-tier-weighted retrieval scoring, coverage saturation factor | Accepted |
 | 2026-07-07 | ResponseComposer built — `app/api/composer.py` centralizes WorkflowResult→Pydantic mapping for all 4 AI endpoints | Accepted |
+| 2026-07-07 | `embed_query` + vector store `search` made async across all providers — event loop no longer blocked during API calls | Accepted |
+| 2026-07-07 | Ingestion script hang fix — replaced `ThreadPoolExecutor` (froze forever on hung batch) with sequential batch processing, per-batch timeout via daemon thread, 3x retry with exponential backoff; added `ZAM_AI_EMBEDDING_BATCH_TIMEOUT` config (default 180s); removed unused `ZAM_AI_EMBEDDING_BATCH_CONCURRENCY` | Accepted |
