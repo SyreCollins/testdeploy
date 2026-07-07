@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from llama_index.embeddings.jinaai import JinaEmbedding as LiJinaEmbedding
@@ -24,8 +25,8 @@ class JinaEmbeddingProvider(BaseEmbeddingProvider):
             embed_batch_size=100,
         )
 
-    def embed_query(self, text: str) -> list[float]:
-        return self._model.get_query_embedding(text)
+    async def embed_query(self, text: str) -> list[float]:
+        return await asyncio.to_thread(self._model.get_query_embedding, text)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._model.get_text_embedding_batch(texts)

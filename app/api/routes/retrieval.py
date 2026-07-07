@@ -14,7 +14,7 @@ router = APIRouter()
 async def search(request: Request, body: SearchRequest) -> SearchResponse:
     svc: RetrievalService = request.app.state.retrieval_service
     try:
-        results = svc.search(
+        results = await svc.search(
             query=body.query,
             limit=body.limit,
             generic_name_filter=body.generic_name_filter,

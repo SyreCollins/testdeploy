@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class BaseEmbeddingProvider(ABC):
     @abstractmethod
-    def embed_query(self, text: str) -> list[float]:
+    async def embed_query(self, text: str) -> list[float]:
         """Generate an embedding vector for a single query text."""
         pass
 

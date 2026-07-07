@@ -12,7 +12,7 @@ class BaseVectorStore(ABC):
         pass
 
     @abstractmethod
-    def search(
+    async def search(
         self,
         query_vector: list[float],
         query_text: str,

@@ -1,6 +1,8 @@
 import os
 import tempfile
 
+import pytest
+
 from app.rag.embeddings.mock import MockEmbeddingProvider
 from app.rag.registry import RagRegistry
 from app.rag.service import IngestionService, RetrievalService
@@ -63,7 +65,8 @@ def test_ingest_skip_duplicate() -> None:
     assert r2["status"] == "skipped"
 
 
-def test_retrieval_service_search() -> None:
+@pytest.mark.asyncio
+async def test_retrieval_service_search() -> None:
     registry = _make_registry()
     embedder = MockEmbeddingProvider()
     store = MemoryVectorStore()
@@ -85,12 +88,13 @@ def test_retrieval_service_search() -> None:
     ingest.ingest_document(src, path, title="Ret Doc")
     os.remove(path)
 
-    results = retrieve.search(query="headache", limit=5)
+    results = await retrieve.search(query="headache", limit=5)
     assert len(results) > 0
     assert any("Headache" in r["text_content"] for r in results)
 
 
-def test_retrieval_service_filters() -> None:
+@pytest.mark.asyncio
+async def test_retrieval_service_filters() -> None:
     registry = _make_registry()
     embedder = MockEmbeddingProvider()
     store = MemoryVectorStore()
@@ -111,8 +115,8 @@ def test_retrieval_service_filters() -> None:
     ingest.ingest_document(src, path, title="Filter Doc")
     os.remove(path)
 
-    filtered = retrieve.search(query="cough", chunk_type_filter="indication", limit=10)
-    tier_filtered = retrieve.search(query="cough", min_trust_tier=2, limit=10)
+    filtered = await retrieve.search(query="cough", chunk_type_filter="indication", limit=10)
+    tier_filtered = await retrieve.search(query="cough", min_trust_tier=2, limit=10)
 
     assert len(filtered) > 0
     assert all(r["chunk_type"] == "indication" for r in filtered)

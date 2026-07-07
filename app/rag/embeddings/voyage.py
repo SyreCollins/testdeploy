@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from llama_index.embeddings.voyageai import VoyageEmbedding as LiVoyageEmbedding
@@ -22,8 +23,8 @@ class VoyageEmbeddingProvider(BaseEmbeddingProvider):
             output_dimension=dimension,
         )
 
-    def embed_query(self, text: str) -> list[float]:
-        return self._model.get_query_embedding(text)
+    async def embed_query(self, text: str) -> list[float]:
+        return await asyncio.to_thread(self._model.get_query_embedding, text)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._model.get_text_embedding_batch(texts)

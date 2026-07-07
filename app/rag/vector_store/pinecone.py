@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -42,7 +43,7 @@ class PineconeVectorStore(BaseVectorStore):
             nodes.append(node)
         self._store.add(nodes)
 
-    def search(
+    async def search(
         self,
         query_vector: list[float],
         query_text: str,
@@ -63,7 +64,7 @@ class PineconeVectorStore(BaseVectorStore):
             filters=filters,
         )
 
-        result = self._store.query(query)
+        result = await asyncio.to_thread(self._store.query, query)
 
         results = []
         for node, score in zip(result.nodes or [], result.similarities or [], strict=False):

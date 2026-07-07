@@ -172,7 +172,7 @@ class RetrievalService:
         self.embedding_provider = embedding_provider or MockEmbeddingProvider()
         self.vector_store = vector_store or MemoryVectorStore()
 
-    def search(
+    async def search(
         self,
         query: str,
         limit: int = 10,
@@ -180,8 +180,8 @@ class RetrievalService:
         chunk_type_filter: str | None = None,
         min_trust_tier: int | None = None,
     ) -> list[dict[str, Any]]:
-        query_vector = self.embedding_provider.embed_query(query)
-        results = self.vector_store.search(
+        query_vector = await self.embedding_provider.embed_query(query)
+        results = await self.vector_store.search(
             query_vector=query_vector,
             query_text=query,
             limit=limit * 2,

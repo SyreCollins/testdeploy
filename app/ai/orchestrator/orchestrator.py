@@ -198,7 +198,7 @@ class ConversationOrchestrator:
         if block:
             return self._safety_block_result(block, "medical_qa", req_id)
 
-        results = self.retrieval.search(query=question, limit=10)
+        results = await self.retrieval.search(query=question, limit=10)
 
         post_decision = self._check_safety_post_retrieval(safety_ctx, results)
         if post_decision.action == SafetyAction.REFUSED:
@@ -342,7 +342,7 @@ class ConversationOrchestrator:
         if block:
             return self._safety_block_result(block, "drug_info", req_id)
 
-        results = self.retrieval.search(
+        results = await self.retrieval.search(
             query=drug_name,
             limit=10,
             chunk_type_filter=None,
@@ -408,7 +408,7 @@ class ConversationOrchestrator:
 
         all_results = []
         for drug in drug_names:
-            results = self.retrieval.search(query=drug, limit=5)
+            results = await self.retrieval.search(query=drug, limit=5)
             all_results.extend(results)
 
         citations = self._build_citations(all_results)

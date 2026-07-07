@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -65,7 +66,7 @@ class QdrantVectorStore(BaseVectorStore):
         )
         logger.info(f"Upserted {len(points)} points into Qdrant")
 
-    def search(
+    async def search(
         self,
         query_vector: list[float],
         query_text: str,
@@ -83,7 +84,8 @@ class QdrantVectorStore(BaseVectorStore):
                 ],
             )
 
-        result = self._client.query_points(
+        result = await asyncio.to_thread(
+            self._client.query_points,
             collection_name=self._collection_name,
             query=query_vector,
             query_filter=query_filter,

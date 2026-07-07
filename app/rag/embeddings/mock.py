@@ -12,7 +12,7 @@ class MockEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(self, dimension: int = 768) -> None:
         self.dimension = dimension
 
-    def embed_query(self, text: str) -> list[float]:
+    async def embed_query(self, text: str) -> list[float]:
         return self._generate_deterministic_vector(text)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
