@@ -2,6 +2,8 @@ import logging
 import uuid
 from typing import Any
 
+from app.ai.audit import AuditTraceWriter
+from app.ai.citation import CitationEngine
 from app.ai.gateway.base import BaseModelProvider, ModelResponse
 from app.ai.orchestrator.intent_classifier import IntentClassifier
 from app.ai.orchestrator.models import ConversationState, Intent, WorkflowResult
@@ -21,6 +23,7 @@ class ConversationOrchestrator:
         prompt_manager: PromptManager,
         model_provider: BaseModelProvider | None = None,
         settings: Any | None = None,
+        audit_writer: AuditTraceWriter | None = None,
     ) -> None:
         self.retrieval = retrieval_service
         self.prompt_mgr = prompt_manager
@@ -28,6 +31,8 @@ class ConversationOrchestrator:
         self.settings = settings
         self.intent_classifier = IntentClassifier()
         self.scorer = ConfidenceScorer()
+        self.citations = CitationEngine()
+        self.audit = audit_writer or AuditTraceWriter()
 
     @property
     def model_provider(self) -> BaseModelProvider:
@@ -70,32 +75,6 @@ class ConversationOrchestrator:
         ctx.has_retrieved_evidence = len(results) > 0
         ctx.has_retrieval_failed = len(results) == 0
         return evaluate_safety(ctx)
-
-    def _build_citations(self, results: list[dict]) -> list[dict]:
-        return [
-            {
-                "citation_id": r["citation_id"],
-                "text_content": r["text_content"],
-                "score": r["score"],
-                "source_name": r.get("source_name"),
-                "source_version": r.get("source_version"),
-                "source_trust_tier": r.get("source_trust_tier"),
-                "document_title": r.get("document_title"),
-                "section_path": r.get("section_path"),
-                "page_number": r.get("page_number"),
-            }
-            for r in results
-        ]
-
-    def _build_evidence_for_prompt(self, citations: list[dict]) -> list[dict]:
-        return [
-            {
-                "source_name": c["source_name"],
-                "source_version": c["source_version"],
-                "text_content": c["text_content"],
-            }
-            for c in citations
-        ]
 
     def _build_patient_context_dict(
         self,
@@ -186,6 +165,10 @@ class ConversationOrchestrator:
         request_id: str | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
+        self.audit.start_trace(req_id, "medical_qa", {
+            "question": question,
+            "patient_age": patient_age,
+        })
 
         safety_ctx = self._build_safety_context(
             query=question,
@@ -196,16 +179,32 @@ class ConversationOrchestrator:
 
         block = self._check_safety_pre_retrieval(safety_ctx)
         if block:
-            return self._safety_block_result(block, "medical_qa", req_id)
+            self.audit.record_event(req_id, "safety_block", {
+                "reason": block.action.value,
+                "risk_level": block.risk_level.value,
+                "message": block.message,
+            })
+            result = self._safety_block_result(block, "medical_qa", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "blocked"})
+            return result
 
         results = await self.retrieval.search(query=question, limit=10)
+        self.audit.record_event(req_id, "retrieval", {
+            "query": question,
+            "result_count": len(results),
+        })
 
         post_decision = self._check_safety_post_retrieval(safety_ctx, results)
         if post_decision.action == SafetyAction.REFUSED:
-            return self._safety_block_result(post_decision, "medical_qa", req_id)
+            result = self._safety_block_result(post_decision, "medical_qa", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "refused_post_retrieval"})
+            return result
 
-        citations = self._build_citations(results)
-        evidence = self._build_evidence_for_prompt(citations)
+        citation_objs = self.citations.build_citations(results)
+        citations = self.citations.format_for_response(citation_objs)
+        evidence = self.citations.build_evidence_for_prompt(citation_objs)
         patient_context = self._build_patient_context_dict(
             age=patient_age,
             sex=patient_sex,
@@ -222,15 +221,23 @@ class ConversationOrchestrator:
 
         response = await self._call_model(system_prompt, user_prompt, question)
         if response is None:
-            return self._model_unavailable_result("medical_qa", req_id)
+            result = self._model_unavailable_result("medical_qa", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
 
-        model_claims = [
-            {
-                "claim": c["text_content"][:200],
-                "citation_ids": [c["citation_id"]],
-            }
-            for c in citations
-        ]
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        model_claims = self.citations.build_claims(citation_objs)
+
+        prompt_version = self.prompt_mgr.get_workflow_version("medical_qa")
+        self.audit.end_trace(req_id, {
+            "outcome": "success",
+            "response_length": len(response.text),
+        })
 
         return WorkflowResult(
             success=True,
@@ -245,6 +252,8 @@ class ConversationOrchestrator:
             },
             confidence_metadata=self.scorer.compute(citations, response.text),
             audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
                 "model_provider": response.provider,
                 "model_version": response.model,
             },
@@ -265,6 +274,7 @@ class ConversationOrchestrator:
         request_id: str | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
+        self.audit.start_trace(req_id, "symptom_guidance", {"symptoms": symptoms})
 
         safety_ctx = self._build_safety_context(
             query=symptoms,
@@ -276,6 +286,7 @@ class ConversationOrchestrator:
         block = self._check_safety_pre_retrieval(safety_ctx)
         if block and block.requires_escalation:
             triage_level = "emergency"
+            self.audit.end_trace(req_id, {"outcome": "emergency_escalation"})
             return WorkflowResult(
                 success=True,
                 response_text=block.message or "Please seek emergency medical care immediately.",
@@ -285,6 +296,7 @@ class ConversationOrchestrator:
                     "action": block.action.value,
                     "requires_escalation": True,
                 },
+                audit_metadata={"trace_id": req_id},
                 structured_result={
                     "triage_level": triage_level,
                     "diagnosis_provided": False,
@@ -304,7 +316,18 @@ class ConversationOrchestrator:
 
         response = await self._call_model(system_prompt, user_prompt, symptoms)
         if response is None:
-            return self._model_unavailable_result("symptom_guidance", req_id)
+            result = self._model_unavailable_result("symptom_guidance", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
+
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        prompt_version = self.prompt_mgr.get_workflow_version("symptom_guidance")
+        self.audit.end_trace(req_id, {"outcome": "success"})
 
         return WorkflowResult(
             success=True,
@@ -315,6 +338,8 @@ class ConversationOrchestrator:
                 "action": "answered",
             },
             audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
                 "model_provider": response.provider,
                 "model_version": response.model,
             },
@@ -332,6 +357,7 @@ class ConversationOrchestrator:
         request_id: str | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
+        self.audit.start_trace(req_id, "drug_info", {"drug_name": drug_name})
 
         safety_ctx = self._build_safety_context(
             query=drug_name,
@@ -340,18 +366,26 @@ class ConversationOrchestrator:
 
         block = self._check_safety_pre_retrieval(safety_ctx)
         if block:
-            return self._safety_block_result(block, "drug_info", req_id)
+            result = self._safety_block_result(block, "drug_info", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "blocked"})
+            return result
 
         results = await self.retrieval.search(
             query=drug_name,
             limit=10,
             chunk_type_filter=None,
         )
+        self.audit.record_event(req_id, "retrieval", {
+            "query": drug_name,
+            "result_count": len(results),
+        })
 
-        citations = self._build_citations(results)
+        citation_objs = self.citations.build_citations(results)
+        citations = self.citations.format_for_response(citation_objs)
         evidence = [
-            {**e, "chunk_type": c.get("chunk_type")}
-            for e, c in zip(self._build_evidence_for_prompt(citations), citations, strict=False)
+            {**e, "chunk_type": c.chunk_type}
+            for e, c in zip(self.citations.build_evidence_for_prompt(citation_objs), citation_objs, strict=False)
         ]
 
         system_prompt, user_prompt = self.prompt_mgr.build_drug_info_prompt(
@@ -362,7 +396,18 @@ class ConversationOrchestrator:
 
         response = await self._call_model(system_prompt, user_prompt, drug_name)
         if response is None:
-            return self._model_unavailable_result("drug_info", req_id)
+            result = self._model_unavailable_result("drug_info", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
+
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        prompt_version = self.prompt_mgr.get_workflow_version("drug_info")
+        self.audit.end_trace(req_id, {"outcome": "success"})
 
         return WorkflowResult(
             success=True,
@@ -372,6 +417,8 @@ class ConversationOrchestrator:
             safety_metadata={"risk_level": "low", "action": "answered"},
             confidence_metadata=self.scorer.compute(citations, response.text),
             audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
                 "model_provider": response.provider,
                 "model_version": response.model,
             },
@@ -394,6 +441,9 @@ class ConversationOrchestrator:
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
         drug_names = [m.get("name", "") for m in medications]
+        self.audit.start_trace(req_id, "interaction_check", {
+            "medications": drug_names,
+        })
 
         safety_ctx = self._build_safety_context(
             query=" ".join(drug_names),
@@ -404,15 +454,25 @@ class ConversationOrchestrator:
 
         block = self._check_safety_pre_retrieval(safety_ctx)
         if block:
-            return self._safety_block_result(block, "interaction_check", req_id)
+            result = self._safety_block_result(block, "interaction_check", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "blocked"})
+            return result
 
         all_results = []
         for drug in drug_names:
             results = await self.retrieval.search(query=drug, limit=5)
             all_results.extend(results)
 
-        citations = self._build_citations(all_results)
-        evidence = self._build_evidence_for_prompt(citations)
+        self.audit.record_event(req_id, "retrieval", {
+            "drugs": drug_names,
+            "total_results": len(all_results),
+        })
+
+        citation_objs = self.citations.build_citations(all_results)
+        citation_objs = self.citations.deduplicate(citation_objs)
+        citations = self.citations.format_for_response(citation_objs)
+        evidence = self.citations.build_evidence_for_prompt(citation_objs)
         patient_context = self._build_patient_context_dict(
             age=patient_age,
             known_conditions=known_conditions,
@@ -431,7 +491,18 @@ class ConversationOrchestrator:
         fallback = "Check interactions between: " + ", ".join(drug_names)
         response = await self._call_model(system_prompt, user_prompt, fallback)
         if response is None:
-            return self._model_unavailable_result("interaction_check", req_id)
+            result = self._model_unavailable_result("interaction_check", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
+
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        prompt_version = self.prompt_mgr.get_workflow_version("interaction_check")
+        self.audit.end_trace(req_id, {"outcome": "success"})
 
         return WorkflowResult(
             success=True,
@@ -441,6 +512,8 @@ class ConversationOrchestrator:
             safety_metadata={"risk_level": "medium", "action": "answered"},
             confidence_metadata=self.scorer.compute(citations, response.text),
             audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
                 "model_provider": response.provider,
                 "model_version": response.model,
             },
@@ -454,6 +527,288 @@ class ConversationOrchestrator:
                     }
                 ],
                 "unknowns": [],
+            },
+        )
+
+    async def run_contraindication_check(
+        self,
+        medications: list[dict],
+        patient_age: int | None = None,
+        known_conditions: list[str] | None = None,
+        allergies: list[str] | None = None,
+        current_medications: list[str] | None = None,
+        conversation_state: ConversationState | None = None,
+        request_id: str | None = None,
+    ) -> WorkflowResult:
+        req_id = request_id or str(uuid.uuid4())
+        drug_names = [m.get("name", "") for m in medications]
+        self.audit.start_trace(req_id, "contraindication_check", {
+            "medications": drug_names,
+        })
+
+        safety_ctx = self._build_safety_context(
+            query=" ".join(drug_names),
+            workflow="contraindication_check",
+            patient_age=patient_age,
+            known_conditions=known_conditions,
+        )
+
+        block = self._check_safety_pre_retrieval(safety_ctx)
+        if block:
+            result = self._safety_block_result(block, "contraindication_check", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "blocked"})
+            return result
+
+        all_results = []
+        for drug in drug_names:
+            results = await self.retrieval.search(query=drug, limit=5)
+            all_results.extend(results)
+
+        self.audit.record_event(req_id, "retrieval", {
+            "drugs": drug_names,
+            "total_results": len(all_results),
+        })
+
+        citation_objs = self.citations.build_citations(all_results)
+        citation_objs = self.citations.deduplicate(citation_objs)
+        citations = self.citations.format_for_response(citation_objs)
+        evidence = self.citations.build_evidence_for_prompt(citation_objs)
+        patient_context = self._build_patient_context_dict(
+            age=patient_age,
+            known_conditions=known_conditions,
+            allergies=allergies,
+            current_medications=current_medications,
+        )
+
+        system_prompt, user_prompt = self.prompt_mgr.build_contraindication_check_prompt(
+            medications=medications,
+            evidence=evidence,
+            patient_context=patient_context,
+        )
+
+        fallback = "Check contraindications for: " + ", ".join(drug_names)
+        response = await self._call_model(system_prompt, user_prompt, fallback)
+        if response is None:
+            result = self._model_unavailable_result("contraindication_check", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
+
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        prompt_version = self.prompt_mgr.get_workflow_version("contraindication_check")
+        self.audit.end_trace(req_id, {"outcome": "success"})
+
+        return WorkflowResult(
+            success=True,
+            response_text=response.text,
+            workflow="contraindication_check",
+            citations=citations[:5],
+            safety_metadata={"risk_level": "medium", "action": "answered"},
+            confidence_metadata=self.scorer.compute(citations, response.text),
+            audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
+                "model_provider": response.provider,
+                "model_version": response.model,
+            },
+            structured_result={
+                "contraindications": [
+                    {
+                        "medication": drug,
+                        "condition": "unknown",
+                        "severity": "unknown",
+                        "reason": response.text,
+                        "citation_ids": [c["citation_id"] for c in citations[:5]],
+                    }
+                ],
+                "missing_context": [],
+                "unknowns": [],
+            },
+        )
+
+    async def run_dosage_verify(
+        self,
+        medication: dict,
+        patient_age: int | None = None,
+        known_conditions: list[str] | None = None,
+        current_medications: list[str] | None = None,
+        conversation_state: ConversationState | None = None,
+        request_id: str | None = None,
+    ) -> WorkflowResult:
+        req_id = request_id or str(uuid.uuid4())
+        drug_name = medication.get("name", "")
+        self.audit.start_trace(req_id, "dosage_verify", {"medication": drug_name})
+
+        safety_ctx = self._build_safety_context(
+            query=drug_name,
+            workflow="dosage_verify",
+            patient_age=patient_age,
+            known_conditions=known_conditions,
+        )
+
+        block = self._check_safety_pre_retrieval(safety_ctx)
+        if block:
+            result = self._safety_block_result(block, "dosage_verify", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "blocked"})
+            return result
+
+        results = await self.retrieval.search(query=drug_name, limit=10)
+        self.audit.record_event(req_id, "retrieval", {
+            "query": drug_name,
+            "result_count": len(results),
+        })
+
+        citation_objs = self.citations.build_citations(results)
+        citations = self.citations.format_for_response(citation_objs)
+        evidence = self.citations.build_evidence_for_prompt(citation_objs)
+        patient_context = self._build_patient_context_dict(
+            age=patient_age,
+            known_conditions=known_conditions,
+            current_medications=current_medications,
+        )
+
+        system_prompt, user_prompt = self.prompt_mgr.build_dosage_verify_prompt(
+            medication=medication,
+            evidence=evidence,
+            patient_context=patient_context,
+        )
+
+        fallback_text = f"Verify dosage for {drug_name}"
+        response = await self._call_model(system_prompt, user_prompt, fallback_text)
+        if response is None:
+            result = self._model_unavailable_result("dosage_verify", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
+
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        prompt_version = self.prompt_mgr.get_workflow_version("dosage_verify")
+        self.audit.end_trace(req_id, {"outcome": "success"})
+
+        return WorkflowResult(
+            success=True,
+            response_text=response.text,
+            workflow="dosage_verify",
+            citations=citations[:5],
+            safety_metadata={"risk_level": "low", "action": "answered"},
+            confidence_metadata=self.scorer.compute(citations, response.text),
+            audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
+                "model_provider": response.provider,
+                "model_version": response.model,
+            },
+            structured_result={
+                "dosages": [
+                    {
+                        "medication_name": drug_name,
+                        "stated_dosage": medication.get("instructions", "not specified"),
+                        "assessment": "verified",
+                        "typical_range": None,
+                        "flags": [],
+                        "citation_ids": [c["citation_id"] for c in citations[:5]],
+                    }
+                ],
+                "missing_context": [],
+            },
+        )
+
+    async def run_prescription_explain(
+        self,
+        prescription_text: str,
+        patient_age: int | None = None,
+        known_conditions: list[str] | None = None,
+        current_medications: list[str] | None = None,
+        conversation_state: ConversationState | None = None,
+        request_id: str | None = None,
+    ) -> WorkflowResult:
+        req_id = request_id or str(uuid.uuid4())
+        self.audit.start_trace(req_id, "prescription_explain", {
+            "prescription_length": len(prescription_text),
+        })
+
+        safety_ctx = self._build_safety_context(
+            query=prescription_text[:500],
+            workflow="prescription_explain",
+            patient_age=patient_age,
+            known_conditions=known_conditions,
+        )
+
+        block = self._check_safety_pre_retrieval(safety_ctx)
+        if block:
+            result = self._safety_block_result(block, "prescription_explain", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "blocked"})
+            return result
+
+        results = await self.retrieval.search(query=prescription_text[:500], limit=10)
+        self.audit.record_event(req_id, "retrieval", {
+            "result_count": len(results),
+        })
+
+        citation_objs = self.citations.build_citations(results)
+        citations = self.citations.format_for_response(citation_objs)
+        evidence = self.citations.build_evidence_for_prompt(citation_objs)
+        patient_context = self._build_patient_context_dict(
+            age=patient_age,
+            known_conditions=known_conditions,
+            current_medications=current_medications,
+        )
+
+        system_prompt, user_prompt = self.prompt_mgr.build_prescription_explain_prompt(
+            prescription_text=prescription_text,
+            evidence=evidence,
+            patient_context=patient_context,
+        )
+
+        response = await self._call_model(system_prompt, user_prompt, prescription_text[:500])
+        if response is None:
+            result = self._model_unavailable_result("prescription_explain", req_id)
+            result.audit_metadata["trace_id"] = req_id
+            self.audit.end_trace(req_id, {"outcome": "model_unavailable"})
+            return result
+
+        self.audit.record_event(req_id, "model_call", {
+            "provider": response.provider,
+            "model": response.model,
+        })
+
+        prompt_version = self.prompt_mgr.get_workflow_version("prescription_explain")
+        self.audit.end_trace(req_id, {"outcome": "success"})
+
+        return WorkflowResult(
+            success=True,
+            response_text=response.text,
+            workflow="prescription_explain",
+            citations=citations[:5],
+            safety_metadata={"risk_level": "low", "action": "answered"},
+            confidence_metadata=self.scorer.compute(citations, response.text),
+            audit_metadata={
+                "trace_id": req_id,
+                "prompt_version": prompt_version,
+                "model_provider": response.provider,
+                "model_version": response.model,
+            },
+            structured_result={
+                "summary": response.text[:500],
+                "sections": [
+                    {
+                        "title": "Explanation",
+                        "content": response.text,
+                        "citation_ids": [c["citation_id"] for c in citations[:5]],
+                    },
+                ],
+                "warnings": [],
             },
         )
 

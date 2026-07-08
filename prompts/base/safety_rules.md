@@ -1,3 +1,4 @@
+---
 name: safety_rules
 version: 1.0.0
 owner: AI Team

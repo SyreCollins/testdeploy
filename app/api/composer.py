@@ -3,6 +3,14 @@ from app.api.schemas.ai import (
     AuditMetadata,
     CitationItem,
     ConfidenceMetadata,
+    ContraindicationCheckRequest,
+    ContraindicationCheckResponse,
+    ContraindicationCheckResult,
+    ContraindicationItem,
+    DosageResult,
+    DosageVerifyRequest,
+    DosageVerifyResponse,
+    DosageVerifyResult,
     DrugInfoRequest,
     DrugInfoResponse,
     DrugInfoResult,
@@ -17,6 +25,10 @@ from app.api.schemas.ai import (
     MedicalQAResponse,
     MedicalQAResult,
     NormalizedDrug,
+    PrescriptionExplainRequest,
+    PrescriptionExplainResponse,
+    PrescriptionExplainResult,
+    PrescriptionSection,
     SafetyMetadata,
     SymptomGuidanceRequest,
     SymptomGuidanceResponse,
@@ -30,6 +42,9 @@ class ResponseComposer:
         "interaction_check": "retrieval_no_evidence",
         "drug_info": "retrieval_no_evidence",
         "symptom_guidance": "retrieval_no_evidence",
+        "contraindication_check": "retrieval_no_evidence",
+        "dosage_verify": "retrieval_no_evidence",
+        "prescription_explain": "retrieval_no_evidence",
     }
 
     @staticmethod
@@ -76,6 +91,8 @@ class ResponseComposer:
     @staticmethod
     def _audit(result: WorkflowResult) -> AuditMetadata:
         return AuditMetadata(
+            trace_id=result.audit_metadata.get("trace_id"),
+            prompt_version=result.audit_metadata.get("prompt_version"),
             model_provider=result.audit_metadata.get("model_provider"),
             model_version=result.audit_metadata.get("model_version"),
         )
@@ -203,5 +220,108 @@ class ResponseComposer:
                 diagnosis_provided=structured.get("diagnosis_provided", False),
             ),
             safety=self._safety(result),
+            citations=self._citations(result),
+            confidence=self._confidence(result),
+            audit=self._audit(result),
+        )
+
+    def contraindication_check(
+        self,
+        result: WorkflowResult,
+        body: ContraindicationCheckRequest,
+    ) -> ContraindicationCheckResponse | ErrorResponse:
+        if not result.success:
+            return self._error(result)
+
+        structured = result.structured_result or {}
+
+        return ContraindicationCheckResponse(
+            request_id=body.request_id,
+            status="success",
+            workflow="contraindication_check",
+            result=ContraindicationCheckResult(
+                contraindications=[
+                    ContraindicationItem(
+                        medication=c.get("medication", ""),
+                        condition=c.get("condition", ""),
+                        severity=c.get("severity", "unknown"),
+                        reason=c.get("reason", ""),
+                        evidence_summary=c.get("evidence_summary"),
+                        citation_ids=c.get("citation_ids", []),
+                    )
+                    for c in (structured.get("contraindications") or [])
+                ],
+                missing_context=structured.get("missing_context") or [],
+                unknowns=structured.get("unknowns") or [],
+            ),
+            safety=self._safety(result, {"risk_level": "medium"}),
+            citations=self._citations(result),
+            confidence=self._confidence(result),
+            audit=self._audit(result),
+        )
+
+    def dosage_verify(
+        self,
+        result: WorkflowResult,
+        body: DosageVerifyRequest,
+    ) -> DosageVerifyResponse | ErrorResponse:
+        if not result.success:
+            return self._error(result)
+
+        structured = result.structured_result or {}
+
+        return DosageVerifyResponse(
+            request_id=body.request_id,
+            status="success",
+            workflow="dosage_verify",
+            result=DosageVerifyResult(
+                dosages=[
+                    DosageResult(
+                        medication_name=d.get("medication_name", ""),
+                        stated_dosage=d.get("stated_dosage", ""),
+                        assessment=d.get("assessment", "unknown"),
+                        typical_range=d.get("typical_range"),
+                        flags=d.get("flags", []),
+                        citation_ids=d.get("citation_ids", []),
+                    )
+                    for d in (structured.get("dosages") or [])
+                ],
+                missing_context=structured.get("missing_context") or [],
+            ),
+            safety=self._safety(result, {"risk_level": "low"}),
+            citations=self._citations(result),
+            confidence=self._confidence(result),
+            audit=self._audit(result),
+        )
+
+    def prescription_explain(
+        self,
+        result: WorkflowResult,
+        body: PrescriptionExplainRequest,
+    ) -> PrescriptionExplainResponse | ErrorResponse:
+        if not result.success:
+            return self._error(result)
+
+        structured = result.structured_result or {}
+
+        return PrescriptionExplainResponse(
+            request_id=body.request_id,
+            status="success",
+            workflow="prescription_explain",
+            result=PrescriptionExplainResult(
+                summary=structured.get("summary", ""),
+                sections=[
+                    PrescriptionSection(
+                        title=s.get("title", ""),
+                        content=s.get("content", ""),
+                        citation_ids=s.get("citation_ids", []),
+                    )
+                    for s in (structured.get("sections") or [])
+                ],
+                warnings=structured.get("warnings", []),
+            ),
+            safety=self._safety(result, {"risk_level": "low"}),
+            citations=self._citations(result),
+            confidence=self._confidence(result),
             audit=self._audit(result),
         )

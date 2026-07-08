@@ -5,6 +5,10 @@ from fastapi import APIRouter, Request
 from app.ai.orchestrator import ConversationOrchestrator
 from app.api.composer import ResponseComposer
 from app.api.schemas.ai import (
+    ContraindicationCheckRequest,
+    ContraindicationCheckResponse,
+    DosageVerifyRequest,
+    DosageVerifyResponse,
     DrugInfoRequest,
     DrugInfoResponse,
     ErrorResponse,
@@ -12,6 +16,8 @@ from app.api.schemas.ai import (
     InteractionCheckResponse,
     MedicalQARequest,
     MedicalQAResponse,
+    PrescriptionExplainRequest,
+    PrescriptionExplainResponse,
     SymptomGuidanceRequest,
     SymptomGuidanceResponse,
 )
@@ -90,3 +96,64 @@ async def symptom_guidance(request: Request, body: SymptomGuidanceRequest) -> Sy
         request_id=body.request_id,
     )
     return composer.symptom_guidance(result, body)
+
+
+@router.post(
+    "/ai/contraindications/check",
+    response_model=ContraindicationCheckResponse | ErrorResponse,
+)
+async def contraindication_check(
+    request: Request, body: ContraindicationCheckRequest
+) -> ContraindicationCheckResponse | ErrorResponse:
+    patient = body.input.patient_context
+    medications = [{"name": m.name} for m in body.input.medications]
+    result = await _orch(request).run_contraindication_check(
+        medications=medications,
+        patient_age=patient.age,
+        known_conditions=patient.known_conditions,
+        allergies=patient.allergies,
+        current_medications=patient.current_medications,
+        request_id=body.request_id,
+    )
+    return composer.contraindication_check(result, body)
+
+
+@router.post(
+    "/ai/dosage/verify",
+    response_model=DosageVerifyResponse | ErrorResponse,
+)
+async def dosage_verify(
+    request: Request, body: DosageVerifyRequest
+) -> DosageVerifyResponse | ErrorResponse:
+    patient = body.input.patient_context
+    medication = {
+        "name": body.input.medication.name,
+        "strength": body.input.medication.strength,
+        "instructions": body.input.medication.instructions,
+    }
+    result = await _orch(request).run_dosage_verify(
+        medication=medication,
+        patient_age=patient.age,
+        known_conditions=patient.known_conditions,
+        current_medications=patient.current_medications,
+        request_id=body.request_id,
+    )
+    return composer.dosage_verify(result, body)
+
+
+@router.post(
+    "/ai/prescriptions/explain",
+    response_model=PrescriptionExplainResponse | ErrorResponse,
+)
+async def prescription_explain(
+    request: Request, body: PrescriptionExplainRequest
+) -> PrescriptionExplainResponse | ErrorResponse:
+    patient = body.input.patient_context
+    result = await _orch(request).run_prescription_explain(
+        prescription_text=body.input.prescription_text,
+        patient_age=patient.age,
+        known_conditions=patient.known_conditions,
+        current_medications=patient.current_medications,
+        request_id=body.request_id,
+    )
+    return composer.prescription_explain(result, body)

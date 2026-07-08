@@ -1,6 +1,7 @@
 import logging
 
 from app.ai.safety.base import RiskLevel, SafetyAction, SafetyContext, SafetyDecision
+from app.ai.safety.injection import check_prompt_injection
 from app.ai.safety.rules import (
     check_emergency,
     check_high_risk,
@@ -13,6 +14,7 @@ logger = logging.getLogger("zam-ai-core-api.safety-engine")
 RULE_CHECKS = [
     check_emergency,
     check_unsafe_request,
+    check_prompt_injection,
     check_retrieval_required,
     check_high_risk,
 ]

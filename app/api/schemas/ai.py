@@ -207,6 +207,8 @@ class SymptomGuidanceResponse(BaseModel):
     workflow: str = "symptom_guidance"
     result: SymptomGuidanceResult | None = None
     safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
     audit: AuditMetadata = Field(default_factory=AuditMetadata)
 
 
@@ -215,6 +217,132 @@ class MedicalQAResponse(BaseModel):
     status: str = "success"
     workflow: str = "medical_qa"
     result: MedicalQAResult | None = None
+    safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
+    audit: AuditMetadata = Field(default_factory=AuditMetadata)
+
+
+class ContraindicationMedication(BaseModel):
+    name: str = Field(min_length=1, examples=["ibuprofen"])
+
+
+class ContraindicationCheckInput(BaseModel):
+    medications: list[ContraindicationMedication] = Field(min_length=1)
+    patient_context: PatientContext = Field(default_factory=PatientContext)
+
+
+class ContraindicationCheckRequest(BaseModel):
+    request_id: str | None = None
+    caller: CallerInfo = Field(default_factory=CallerInfo)
+    actor_context: ActorContext
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    locale: Locale = Field(default_factory=Locale)
+    input: ContraindicationCheckInput
+
+
+class ContraindicationItem(BaseModel):
+    medication: str
+    condition: str
+    severity: str = "unknown"
+    reason: str
+    evidence_summary: str | None = None
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+class ContraindicationCheckResult(BaseModel):
+    contraindications: list[ContraindicationItem] = Field(default_factory=list)
+    missing_context: list[str] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+
+
+class ContraindicationCheckResponse(BaseModel):
+    request_id: str | None = None
+    status: str = "success"
+    workflow: str = "contraindication_check"
+    result: ContraindicationCheckResult | None = None
+    safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
+    audit: AuditMetadata = Field(default_factory=AuditMetadata)
+
+
+class DosageMedication(BaseModel):
+    name: str = Field(min_length=1, examples=["amoxicillin"])
+    strength: str | None = None
+    instructions: str | None = None
+
+
+class DosageVerifyInput(BaseModel):
+    medication: DosageMedication
+    patient_context: PatientContext = Field(default_factory=PatientContext)
+
+
+class DosageVerifyRequest(BaseModel):
+    request_id: str | None = None
+    caller: CallerInfo = Field(default_factory=CallerInfo)
+    actor_context: ActorContext
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    locale: Locale = Field(default_factory=Locale)
+    input: DosageVerifyInput
+
+
+class DosageResult(BaseModel):
+    medication_name: str
+    stated_dosage: str
+    assessment: str = "unknown"
+    typical_range: str | None = None
+    flags: list[str] = Field(default_factory=list)
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+class DosageVerifyResult(BaseModel):
+    dosages: list[DosageResult] = Field(default_factory=list)
+    missing_context: list[str] = Field(default_factory=list)
+
+
+class DosageVerifyResponse(BaseModel):
+    request_id: str | None = None
+    status: str = "success"
+    workflow: str = "dosage_verify"
+    result: DosageVerifyResult | None = None
+    safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
+    audit: AuditMetadata = Field(default_factory=AuditMetadata)
+
+
+class PrescriptionExplainInput(BaseModel):
+    prescription_text: str = Field(min_length=1)
+    patient_context: PatientContext = Field(default_factory=PatientContext)
+
+
+class PrescriptionExplainRequest(BaseModel):
+    request_id: str | None = None
+    caller: CallerInfo = Field(default_factory=CallerInfo)
+    actor_context: ActorContext
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    locale: Locale = Field(default_factory=Locale)
+    input: PrescriptionExplainInput
+
+
+class PrescriptionSection(BaseModel):
+    title: str
+    content: str
+    citation_ids: list[str] = Field(default_factory=list)
+
+
+class PrescriptionExplainResult(BaseModel):
+    summary: str
+    sections: list[PrescriptionSection] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class PrescriptionExplainResponse(BaseModel):
+    request_id: str | None = None
+    status: str = "success"
+    workflow: str = "prescription_explain"
+    result: PrescriptionExplainResult | None = None
     safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
     citations: list[CitationItem] = Field(default_factory=list)
     confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)

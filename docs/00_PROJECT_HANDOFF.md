@@ -16,7 +16,8 @@ Zam AI is a medical intelligence platform for patients, doctors, pharmacies, and
 | **Documentation** | ✅ All 12 docs completed (DB design deferred — backend-owned) |
 | **Phase 0 — Scaffold** | ✅ Complete (API, middleware, logging, Docker, CI, lint, tests passing) |
 | **Phase 1 — Knowledge Platform** | ✅ Complete (ingestion + retrieval + 19 tests passing) |
-| **Phase 2+ — AI Core & User Workflows** | 🔄 In progress (Conversation Orchestrator built) |
+| **Phase 2 — AI Core** | ✅ Complete (All 11 components built — orchestration, safety, prompts, citations, grounding, audit, scoring) |
+| **Phase 3+ — User Workflows** | 🔄 Not started (Contraindications, Prescription OCR, Doctor/Pharmacy assist) |
 
 ---
 
@@ -43,11 +44,17 @@ The repo has both the full architecture documentation set and a working Phase 0 
 - `app/ai/gateway/` — Model Gateway (base ABC + Claude + Gemini + Mock providers + factory)
 - `app/ai/prompts/` — Prompt Manager (registry + builder + manager; loads YAML-frontmatter templates from `prompts/`)
 - `app/ai/safety/` — Safety Policy Engine (risk classification + rules + evaluator)
-- `app/ai/scoring/confidence.py` — **ConfidenceScorer** (retrieval scoring with trust tier weighting + coverage factor; grounding and overall score stubs)
-- `app/api/composer.py` — **ResponseComposer** (centralizes WorkflowResult → Pydantic response mapping for all 4 AI endpoints)
+- `app/ai/citation/` — **CitationEngine** (Citation dataclass + engine for building, formatting, dedup, truncation, and claim extraction)
+- `app/ai/grounding/` — **GroundingVerifier** (token-overlap-based claim evidence verification; score_grounding no longer a stub)
+- `app/ai/audit/` — **AuditTraceWriter** (per-request event logging with in-memory ring buffer + structured JSON output)
+- `app/ai/scoring/confidence.py` — **ConfidenceScorer** (retrieval scoring with trust tier weighting + coverage factor; now wired to real GroundingVerifier)
+- `app/api/composer.py` — **ResponseComposer** (centralizes WorkflowResult → Pydantic response mapping for all 4 AI endpoints; now includes trace_id and prompt_version in audit)
 - `app/api/routes/ai.py` — 4 AI endpoints that delegate to orchestrator + composer (~8 lines each, no duplicated logic)
 - `prompts/` — 11 prompt template files (base components + patient workflows + JSON schema)
 - `app/domains/`, `app/integrations/`, `app/evaluation/`, `app/workers/` — empty scaffolds
+- `tests/test_citation_engine.py` — 12 tests
+- `tests/test_grounding_verifier.py` — 13 tests (including ConfidenceScorer integration)
+- `tests/test_audit_writer.py` — 10 tests
 - `tests/test_orchestrator.py` — 13 orchestrator tests (intent classification, pipeline)
 - `tests/test_health.py` — 3 health endpoint tests
 - `tests/test_parsers.py` — 5 parser tests (CSV, XLSX, auto-selection, encoding)
@@ -60,7 +67,7 @@ The repo has both the full architecture documentation set and a working Phase 0 
 ```
 Phase 0: ████████████████████ 100%
 Phase 1: ████████████████████ 100%  (All 7 steps complete — 19 tests, 0 lint errors)
-Phase 2: ███████████████████░  85%  (Orchestrator built + ConfidenceScorer + ResponseComposer + async migration — 2 of 11 items remaining)
+Phase 2: ████████████████████ 100%  (All 11 components complete — CitationEngine, GroundingVerifier, AuditTraceWriter added; 75 tests, 0 lint errors)
 Phase 3+: ░░░░░░░░░░░░░░░░░░░░   0%
 ```
 
@@ -157,10 +164,10 @@ Status: 🔄 In progress
 | 5 | **Context builder** — assemble retrieved chunks + patient context into prompt context | ✅ Built into orchestrator |
 | 6 | **Prompt manager** — versioned prompt templates with model-specific overrides | ✅ Complete |
 | 7 | **Model gateway** — abstract LLM provider with retry, fallback, logging | ✅ Complete |
-| 8 | **Citation engine** — format citations from retrieved chunks | ❌ Not started |
-| 9 | **Grounding verifier** — verify response aligns with retrieved evidence | ❌ Not started |
-| 10 | **Confidence scorer** — score answer confidence from grounding + source tier | ✅ Complete |
-| 11 | **Audit trace writer** — log every request, response, model call, and decision | ❌ Not started |
+| 8 | **Citation engine** — `app/ai/citation/` — Citation dataclass + CitationEngine (build, format, dedup, truncate, claims) | ✅ Complete |
+| 9 | **Grounding verifier** — `app/ai/grounding/` — token-overlap based claim verification, replaces ConfidenceScorer stub | ✅ Complete |
+| 10 | **Confidence scorer** — score answer confidence from grounding + source tier; now uses GroundingVerifier | ✅ Complete |
+| 11 | **Audit trace writer** — `app/ai/audit/` — per-request event logging with in-memory ring buffer + JSON structured output | ✅ Complete |
 
 ### Prerequisites for Phase 2
 - ✅ LLM provider decision (Claude default, Gemini fallback)
@@ -345,21 +352,30 @@ High-risk intents (emergency, pregnancy, paediatric, interactions, contraindicat
 | 2026-07-07 | **ResponseComposer** (`app/api/composer.py`) — centralizes WorkflowResult→Pydantic mapping; routes reduced to ~8 lines each | Accepted |
 | 2026-07-07 | **Async migration** — `embed_query` async across all 4 providers; vector store `search` async across all 3 stores; `RetrievalService.search` async; all callers updated | Accepted |
 | 2026-07-07 | **Ingestion hang fix** — removed `ThreadPoolExecutor` (froze forever on hung batch); replaced with sequential processing, per-batch timeout (daemon thread, 180s default), 3x retry with exponential backoff | Accepted |
+| 2026-07-08 | **CitationEngine** (`app/ai/citation/`) — dedicated Citation dataclass + engine for building, formatting, dedup, truncation; replaces ad-hoc `_build_citations` in orchestrator; citation fields added to `SymptomGuidanceResponse` for API consistency | Accepted |
+| 2026-07-08 | **GroundingVerifier** (`app/ai/grounding/`) — token-overlap-based claim evidence verification; replaces `ConfidenceScorer.score_grounding()` stub with real implementation; `score_overall()` now uses both retrieval + grounding scores | Accepted |
+| 2026-07-08 | **AuditTraceWriter** (`app/ai/audit/`) — per-request event logging (safety, retrieval, model calls) with in-memory ring buffer + structured JSON output; `trace_id` and `prompt_version` now populated in `AuditMetadata` across all endpoints | Accepted |
 
 ---
 
 ## 14. Next Action
 
-Build remaining Phase 2 components:
+Phase 2 is complete (all 11 components built). Recommended next work:
 
-1. **Citation engine** — extract citation formatting/routing into a dedicated module
-2. **Grounding verifier** — verify LLM response aligns with retrieved evidence
-3. **Audit trace writer** — log every request, response, model call, and decision
+**Phase 3 — Patient MVP Endpoints (new endpoints, same pattern as existing):**
+- `POST /v1/ai/contraindications/check` — check interactions against patient conditions
+- `POST /v1/ai/dosage/verify` — verify dosage against source data
+- `POST /v1/ai/prescriptions/explain` — explain prescription details to patients
 
-Or build Phase 4 endpoints that don't depend on Phase 2 completion (same pattern as existing ones):
-- `POST /v1/ai/contraindications/check`
-- `POST /v1/ai/dosage/verify`
-- `POST /v1/ai/prescriptions/explain`
+**Phase 4 — Prescription Intelligence:**
+- `POST /v1/ai/prescriptions/ocr-jobs` — submit prescription for OCR
+- `POST /v1/ai/reminders/parse-schedule` — extract medication schedule from text
+
+**Quality & Infrastructure:**
+- Add Redis integration for caching and rate limiting
+- Create golden evaluation datasets for regression testing
+- Build evaluation pipeline (`app/evaluation/`)
+- Add Postgres support for AI metadata storage
 
 ---
 

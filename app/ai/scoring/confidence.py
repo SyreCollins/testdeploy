@@ -1,9 +1,10 @@
 import logging
 import math
 
+from app.ai.grounding import GroundingVerifier
+
 logger = logging.getLogger("zam-ai-core-api.confidence-scorer")
 
-# Lower trust_tier = more authoritative source
 TRUST_TIER_WEIGHTS: dict[int | None, float] = {
     1: 1.0,
     2: 0.9,
@@ -12,11 +13,13 @@ TRUST_TIER_WEIGHTS: dict[int | None, float] = {
     None: 0.5,
 }
 
-# Saturation point for coverage — more chunks beyond this add diminishing returns
 COVERAGE_SATURATION = 5
 
 
 class ConfidenceScorer:
+    def __init__(self, grounding_verifier: GroundingVerifier | None = None) -> None:
+        self._grounding = grounding_verifier or GroundingVerifier()
+
     def score_retrieval(self, citations: list[dict]) -> float:
         if not citations:
             return 0.0
@@ -40,7 +43,8 @@ class ConfidenceScorer:
     def score_grounding(self, response_text: str | None, citations: list[dict]) -> float:
         if not response_text or not citations:
             return 0.0
-        return 0.0
+        result = self._grounding.verify(response_text, citations)
+        return result.score
 
     def score_overall(self, retrieval: float, grounding: float) -> float:
         if retrieval == 0.0 and grounding == 0.0:
