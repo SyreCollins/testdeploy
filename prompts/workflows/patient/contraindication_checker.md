@@ -54,4 +54,23 @@ No contraindication evidence was retrieved.
 
 ## OUTPUT FORMAT
 
-For each contraindication found, list the medication, the contraindicated condition, severity (contraindicated / precaution / no_contraindication), a brief reason, and supporting citations. If a medication has no known contraindications with the patient's context, state that. List any medications that could not be evaluated due to missing context in missing_context, and any that could not be identified in unknowns.
+Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+
+```json
+{
+  "contraindications": [
+    {
+      "medication": "drug name",
+      "condition": "contraindicated condition",
+      "severity": "contraindicated | precaution | no_contraindication",
+      "reason": "brief patient-friendly explanation",
+      "evidence_summary": "summary of supporting evidence",
+      "citation_ids": ["c1", "c2"]
+    }
+  ],
+  "missing_context": ["list of missing patient info needed"],
+  "unknowns": ["medications that could not be evaluated"]
+}
+```
+
+If no contraindications are found, return an empty contraindications array. If a medication has no known contraindications, include it with severity "no_contraindication".

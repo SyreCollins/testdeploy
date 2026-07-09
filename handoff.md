@@ -5,26 +5,17 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-# zam-ai-core-api — Handoff
+## State (~210 tests, 0 lint errors)
 
-## Project
-Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM response from model internal knowledge, must be grounded in retrieved evidence.
-
----
-
-## State (150 tests, 0 lint errors)
-
-### ✅ Completed (this session — 2026-07-08)
+### ✅ Completed (this session — 2026-07-09)
 
 | Area | Details |
 |---|---|
-| **Safety engine tests** | 45 tests covering all risk levels, actions, rule ordering, emergency keywords, high-risk patterns, unsafe requests, retrieval failures, edge cases |
-| **Prompt injection detection** | `app/ai/safety/injection.py` — 18 patterns (ignore instructions, jailbreak, system prompt leak, delimiter injection), wired into `evaluate_safety()` as 3rd rule |
-| **API key management** | `POST/GET /v1/admin/keys`, `POST .../{id}/rotate`, `POST .../{id}/revoke` — SHA-256 hashed, in-memory store, auto-bootstraps from `ZAM_AI_INTERNAL_API_KEYS` config |
-| **Rate limiting middleware** | `app/core/middleware/rate_limit.py` — 60 req/60s per key, 429 response, docs/health exempt |
-| **Audit query endpoints** | `GET /v1/audit/traces` + `GET /v1/audit/traces/{trace_id}` — reads from in-memory AuditTraceWriter ring buffer |
-| **Model gateway tests** | 20 tests — `ModelResponse`, `StreamEvent`, `MockModelProvider` (generate + stream), factory auto-detect, Claude/Gemini instantiation with/without keys |
-| **Unused import cleanup** | Removed stale imports across test files |
+| **3 stubbed endpoint outputs fixed** | `contraindications/check`, `dosage/verify`, `prescriptions/explain` — added `_parse_json_from_response()` helper; updated prompt templates with JSON output schemas; orchestrator now parses LLM output instead of hardcoded stubs |
+| **End-to-end integration tests** | `tests/test_ai_integration.py` — 16 tests covering all 7 AI endpoints via FastAPI `TestClient` with mocked orchestrator. Added `tests/conftest.py` with shared fixtures, env cleanup, and key store reset |
+| **Missing workflow unit tests** | `tests/test_orchestrator_workflows.py` — 21 tests for `run_medical_qa`, `run_interaction_check`, `run_drug_info`, `run_symptom_guidance` with mocked dependencies |
+| **Intent classifier expanded** | Added 6 new intents to `Intent` enum + `IntentClassifier.PATTERNS`: `CONTRAINDICATION_CHECK`, `DOSAGE_VERIFY`, `PRESCRIPTION_EXPLAIN`, `DOCTOR_ASSIST`, `PHARMACY_ASSIST`, `REMINDERS`. Updated `run_workflow` routing — existing 3 route to real `run_*` methods, new 3 return placeholder. Test file expanded from 14 to 25 tests |
+| **`asyncio_mode = auto`** | Configured in `pyproject.toml` so async tests work without `--asyncio-mode=auto` flag |
 
 ### ✅ Completed (prior sessions)
 
@@ -35,20 +26,21 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Tier 2 — Modules** | Citation Engine (`app/ai/citation/`), Grounding Verifier (`app/ai/grounding/`), Audit Trace Writer (`app/ai/audit/`) |
 | **Tier 3 — Safety** | Safety engine (`app/ai/safety/`) with 4 rule checks (emergency, unsafe request, prompt injection, retrieval required, high risk). Prompt injection detection covers 18 patterns. |
 | **Prompt templates** | 13 `.md` files (6 base + 7 workflow), all fixed with correct YAML frontmatter (`---`) |
-| **Test total** | 150 passing tests, 14 test files |
+| **Safety engine tests** | 45 tests covering all risk levels, actions, rule ordering, emergency keywords, high-risk patterns, unsafe requests, retrieval failures, edge cases |
+| **Prompt injection detection** | `app/ai/safety/injection.py` — 18 patterns (ignore instructions, jailbreak, system prompt leak, delimiter injection), wired into `evaluate_safety()` as 3rd rule |
+| **API key management** | `POST/GET /v1/admin/keys`, `POST .../{id}/rotate`, `POST .../{id}/revoke` — SHA-256 hashed, in-memory store, auto-bootstraps from `ZAM_AI_INTERNAL_API_KEYS` config |
+| **Rate limiting middleware** | `app/core/middleware/rate_limit.py` — 60 req/60s per key, 429 response, docs/health exempt |
+| **Audit query endpoints** | `GET /v1/audit/traces` + `GET /v1/audit/traces/{trace_id}` — reads from in-memory AuditTraceWriter ring buffer |
+| **Model gateway tests** | 20 tests — `ModelResponse`, `StreamEvent`, `MockModelProvider` (generate + stream), factory auto-detect, Claude/Gemini instantiation with/without keys |
 
-### ❌ Remaining Gaps (HIGH first)
+### ❌ Remaining Gaps
 
 | Priority | Area | What to do |
 |---|---|---|
-| **HIGH** | 3 endpoint outputs stubbed | `contraindications/check` returns "severity: unknown", `dosage/verify` returns "assessment: verified", `prescriptions/explain` returns raw LLM text — none parse real LLM output into structured fields |
-| **MEDIUM** | End-to-end tests | Route-level integration tests using FastAPI `TestClient` for all 7 AI endpoints |
-| **MEDIUM** | Missing workflow tests | `test_medical_qa`, `test_interaction_check`, `test_drug_info`, `test_symptom_guidance` — no dedicated unit tests |
 | **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` — need OCR provider, worker queue, schema, routes |
-| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — medication review, patient summary, interaction/contraindication review, patient education draft |
-| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — drug explanation, interaction review, alternative review, inventory contextualization |
-| **MEDIUM** | Intent classifier incomplete | Cannot classify `contraindication_check`, `dosage_verify`, `prescription_explain`, `doctor_assist`, `pharmacy_assist`, `reminders` — falls back to GENERAL or MEDICAL_QA |
-| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — route, prompt, orchestrator |
+| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — medication review, patient summary, interaction/contraindication review, patient education draft. Intent classifier has `DOCTOR_ASSIST` pattern (returns placeholder) |
+| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — drug explanation, interaction review, alternative review, inventory contextualization. Intent classifier has `PHARMACY_ASSIST` pattern (returns placeholder) |
+| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — route, prompt, orchestrator. Intent classifier has `REMINDERS` pattern (returns placeholder) |
 | **LOW** | 13 prompt templates not created | `medication_schedule.md`, `health_guidance.md`, 3 pharmacy workflow prompts, 3 doctor workflow prompts, 3 JSON response schemas, `examples/` directory |
 | **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` (9 directories) and `app/integrations/*` (5 directories) — all just `__init__.py` |
 | **LOW** | `tests/__init__.py` | Add package init |
@@ -61,4 +53,4 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
 - 0 TODO/FIXME/HACK/XXX comments in codebase
 - `.env` has real keys for Jina embeddings, Pinecone, and Voyage — Claude key still needs to be set
-- Architecture docs define 8 phases; Phase 2 is complete, Phases 3-8 not started
+- Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started

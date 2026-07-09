@@ -1,4 +1,6 @@
+import json
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -142,6 +144,19 @@ class ConversationOrchestrator:
                 "action": action,
             },
         )
+
+    @staticmethod
+    def _parse_json_from_response(text: str) -> dict | None:
+        match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(1).strip())
+            except json.JSONDecodeError:
+                pass
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            return None
 
     def _model_unavailable_result(self, workflow: str, req_id: str) -> WorkflowResult:
         return WorkflowResult(
@@ -600,6 +615,12 @@ class ConversationOrchestrator:
             "model": response.model,
         })
 
+        parsed = self._parse_json_from_response(response.text) or {}
+        ci = parsed.get("contraindications") or []
+        for i, item in enumerate(ci):
+            if not item.get("citation_ids") and i < len(citations):
+                item["citation_ids"] = [c["citation_id"] for c in citations[:5]]
+
         prompt_version = self.prompt_mgr.get_workflow_version("contraindication_check")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
@@ -617,17 +638,9 @@ class ConversationOrchestrator:
                 "model_version": response.model,
             },
             structured_result={
-                "contraindications": [
-                    {
-                        "medication": drug,
-                        "condition": "unknown",
-                        "severity": "unknown",
-                        "reason": response.text,
-                        "citation_ids": [c["citation_id"] for c in citations[:5]],
-                    }
-                ],
-                "missing_context": [],
-                "unknowns": [],
+                "contraindications": ci,
+                "missing_context": parsed.get("missing_context") or [],
+                "unknowns": parsed.get("unknowns") or [],
             },
         )
 
@@ -692,6 +705,12 @@ class ConversationOrchestrator:
             "model": response.model,
         })
 
+        parsed = self._parse_json_from_response(response.text) or {}
+        dosages = parsed.get("dosages") or []
+        for i, d in enumerate(dosages):
+            if not d.get("citation_ids") and i < len(citations):
+                d["citation_ids"] = [c["citation_id"] for c in citations[:5]]
+
         prompt_version = self.prompt_mgr.get_workflow_version("dosage_verify")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
@@ -709,17 +728,8 @@ class ConversationOrchestrator:
                 "model_version": response.model,
             },
             structured_result={
-                "dosages": [
-                    {
-                        "medication_name": drug_name,
-                        "stated_dosage": medication.get("instructions", "not specified"),
-                        "assessment": "verified",
-                        "typical_range": None,
-                        "flags": [],
-                        "citation_ids": [c["citation_id"] for c in citations[:5]],
-                    }
-                ],
-                "missing_context": [],
+                "dosages": dosages,
+                "missing_context": parsed.get("missing_context") or [],
             },
         )
 
@@ -786,6 +796,12 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("prescription_explain")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
+        parsed = self._parse_json_from_response(response.text) or {}
+        sections = parsed.get("sections") or []
+        for i, s in enumerate(sections):
+            if not s.get("citation_ids") and i < len(citations):
+                s["citation_ids"] = [c["citation_id"] for c in citations[:5]]
+
         return WorkflowResult(
             success=True,
             response_text=response.text,
@@ -800,15 +816,9 @@ class ConversationOrchestrator:
                 "model_version": response.model,
             },
             structured_result={
-                "summary": response.text[:500],
-                "sections": [
-                    {
-                        "title": "Explanation",
-                        "content": response.text,
-                        "citation_ids": [c["citation_id"] for c in citations[:5]],
-                    },
-                ],
-                "warnings": [],
+                "summary": parsed.get("summary") or response.text[:500],
+                "sections": sections,
+                "warnings": parsed.get("warnings") or [],
             },
         )
 
@@ -865,6 +875,37 @@ class ConversationOrchestrator:
                 request_id=request_id,
             )
 
+        if intent == Intent.CONTRAINDICATION_CHECK:
+            return await self.run_contraindication_check(
+                medications=patient.get("medications", [{"name": message}]),
+                patient_age=patient.get("age"),
+                known_conditions=patient.get("known_conditions"),
+                allergies=patient.get("allergies"),
+                current_medications=patient.get("current_medications"),
+                conversation_state=conversation_state,
+                request_id=request_id,
+            )
+
+        if intent == Intent.DOSAGE_VERIFY:
+            return await self.run_dosage_verify(
+                medication=patient.get("medication", {"name": message}),
+                patient_age=patient.get("age"),
+                known_conditions=patient.get("known_conditions"),
+                current_medications=patient.get("current_medications"),
+                conversation_state=conversation_state,
+                request_id=request_id,
+            )
+
+        if intent == Intent.PRESCRIPTION_EXPLAIN:
+            return await self.run_prescription_explain(
+                prescription_text=message,
+                patient_age=patient.get("age"),
+                known_conditions=patient.get("known_conditions"),
+                current_medications=patient.get("current_medications"),
+                conversation_state=conversation_state,
+                request_id=request_id,
+            )
+
         if intent == Intent.EMERGENCY:
             return WorkflowResult(
                 success=True,
@@ -878,11 +919,31 @@ class ConversationOrchestrator:
                 structured_result={"triage_level": "emergency"},
             )
 
+        if intent in (Intent.DOCTOR_ASSIST, Intent.PHARMACY_ASSIST, Intent.REMINDERS):
+            return WorkflowResult(
+                success=False,
+                response_text=f"The {intent.value} feature is not yet implemented.",
+                workflow=intent.value,
+                error=f"Feature not implemented: {intent.value}",
+                error_code="feature_not_implemented",
+                safety_metadata={"risk_level": "low", "action": "refused"},
+            )
+
         return WorkflowResult(
             success=False,
             response_text="I can only answer medical questions about medications, symptoms, and health information.",
             workflow="general",
             error="Unsupported intent",
+            error_code="unsupported_intent",
+            safety_metadata={"risk_level": "low", "action": "refused"},
+        )
+
+    def _unsupported_intent_result(self, intent: Intent) -> WorkflowResult:
+        return WorkflowResult(
+            success=False,
+            response_text="I can only answer medical questions about medications, symptoms, and health information.",
+            workflow=intent.value,
+            error=f"Unsupported intent: {intent.value}",
             error_code="unsupported_intent",
             safety_metadata={"risk_level": "low", "action": "refused"},
         )

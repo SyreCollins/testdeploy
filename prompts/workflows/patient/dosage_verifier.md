@@ -55,4 +55,22 @@ No dosage evidence was retrieved.
 
 ## OUTPUT FORMAT
 
-Provide an assessment of the dosage. Include the stated dosage, the typical range found in evidence, any flags (e.g., "above_range", "below_range", "missing_weight", "missing_age", "renal_concern"), and supporting citations. If patient-specific parameters are missing, list them in missing_context.
+Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+
+```json
+{
+  "dosages": [
+    {
+      "medication_name": "drug name",
+      "stated_dosage": "dosage as prescribed",
+      "assessment": "verified | caution | out_of_range | requires_review",
+      "typical_range": "typical range from evidence or null",
+      "flags": ["above_range", "below_range", "missing_weight", "missing_age", "renal_concern"],
+      "citation_ids": ["c1", "c2"]
+    }
+  ],
+  "missing_context": ["list of missing patient info needed"]
+}
+```
+
+If the dosage is within the typical range, set assessment to "verified". If missing critical context like weight or renal function, include relevant flags and list them in missing_context.

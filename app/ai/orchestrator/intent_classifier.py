@@ -31,14 +31,54 @@ class IntentClassifier:
             r"\b(what|how|why|when|can|could|should|would|does|is|are)\b.*\b(medication|medicine|drug|treatment|condition|disease|health|prescription|therapy)\b",
             r"\b(is it safe|are there|do i need|should i take|could this be)\b",
         ],
+        Intent.CONTRAINDICATION_CHECK: [
+            r"\bcontraindication|contraindicated\b",
+            r"\bis it safe\b.*\b(with)\b.*\b(condition|disease|history)\b",
+            r"\b(can|could|should)\b.*\btake\b.*\b(with\b.*\bcondition|with\b.*\bhistory|with\b.*\bdisease)\b",
+        ],
+        Intent.DOSAGE_VERIFY: [
+            r"\b(dosage|dose|how much|how often|how many times)\b.*\b(verify|correct|right|safe|appropriate)\b",
+            r"\bverify\b.*\bdosage\b",
+            r"\bis\b.*\b(dosage|dose)\b.*\b(correct|right|safe|appropriate)\b",
+        ],
+        Intent.PRESCRIPTION_EXPLAIN: [
+            r"\bexplain\b.*\b(prescription|script|medication list|drug list)\b",
+            r"\bwhat does this prescription\b",
+            r"\bbreak down\b.*\b(prescription|medication)\b",
+        ],
+        Intent.DOCTOR_ASSIST: [
+            r"\bdoctor\b.*\b(assist|help|review|summarize|educate)\b",
+            r"\bmedication review\b",
+            r"\bpatient( education| summary| handout)\b",
+            r"\bprepare\b.*\b(consultation|visit|appointment)\b",
+        ],
+        Intent.PHARMACY_ASSIST: [
+            r"\bpharmacy\b.*\s(assist|help|check|review|verify)\b",
+            r"\bdrug explanation\b",
+            r"\bwhat( are|\'s) the alternative",
+            r"\binventory\b.*\b(question|inquiry|check)\b",
+            r"\bpharmacy (assist|assistance)\b",
+        ],
+        Intent.REMINDERS: [
+            r"\b(remind|reminder|medication schedule|medication timing)\b",
+            r"\b(set|create|make)\b.*\b(remind|reminder)\b",
+            r"\bmedication (reminder|schedule|timing|plan)\b",
+            r"\bwhen (to take|should I take|do I take)\b.*\b(medication|medicine|pill|drug)\b",
+        ],
     }
 
     # Weights to resolve conflicts when multiple patterns match
     PRIORITY: dict[Intent, float] = {
         Intent.EMERGENCY: 1.0,
+        Intent.DOSAGE_VERIFY: 0.92,
+        Intent.CONTRAINDICATION_CHECK: 0.91,
         Intent.INTERACTION_CHECK: 0.9,
         Intent.DRUG_INFO: 0.85,
         Intent.SYMPTOM_GUIDANCE: 0.8,
+        Intent.PRESCRIPTION_EXPLAIN: 0.78,
+        Intent.DOCTOR_ASSIST: 0.76,
+        Intent.PHARMACY_ASSIST: 0.75,
+        Intent.REMINDERS: 0.72,
         Intent.MEDICAL_QA: 0.7,
         Intent.GENERAL: 0.3,
         Intent.UNKNOWN: 0.0,

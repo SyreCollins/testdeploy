@@ -49,4 +49,25 @@ No drug information was retrieved.
 
 ## OUTPUT FORMAT
 
-Provide a patient-friendly summary of the prescription. Break the explanation into sections such as "What is this medication for?", "How to take it", "Common side effects", and "Important warnings". Include any warnings about the prescription based on the evidence. List the prescription text and any clarifications needed.
+Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+
+```json
+{
+  "summary": "brief patient-friendly summary of the prescription",
+  "sections": [
+    {
+      "title": "What is this medication for?",
+      "content": "explanation of the medication's purpose",
+      "citation_ids": ["c1", "c2"]
+    },
+    {
+      "title": "How to take it",
+      "content": "usage instructions",
+      "citation_ids": ["c3"]
+    }
+  ],
+  "warnings": ["list of important warnings based on evidence"]
+}
+```
+
+Include sections relevant to the prescription such as medication purpose, how to take it, common side effects, and important warnings. Set warnings to an empty list if none are identified.
