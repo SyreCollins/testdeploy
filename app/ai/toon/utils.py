@@ -1,8 +1,8 @@
 import logging
 import re
 
-from py_toon_format import decode as _toon_decode
-from py_toon_format import encode as _toon_encode
+from toon_format import decode as _toon_decode
+from toon_format import encode as _toon_encode
 
 logger = logging.getLogger("zam-ai-core-api.toon")
 
