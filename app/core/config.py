@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     model_provider: str = ""
     claude_api_key: str | None = None
-    claude_model: str = "claude-sonnet-4-20250514"
+    claude_model: str = "claude-sonnet-4-6"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.0-flash"
 

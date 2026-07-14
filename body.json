@@ -1,0 +1,1 @@
+{"caller":{"service":"zamda-backend","environment":"production"},"actor_context":{"actor_type":"patient","actor_id":"test-1","role":"patient"},"authorization_context":{"workflow":"medical_qa"},"input":{"question":"What is metformin used for?"}}

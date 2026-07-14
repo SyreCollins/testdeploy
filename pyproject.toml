@@ -21,7 +21,7 @@ dependencies = [
     "google-genai>=1.0.0",
     "jinja2>=3.1.0",
     "pyyaml>=6.0.0",
-    "toon-format>=0.9.0b1",
+    "py-toon-format>=0.1.0",
 ]
 
 [project.optional-dependencies]

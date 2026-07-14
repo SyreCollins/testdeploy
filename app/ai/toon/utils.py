@@ -1,12 +1,14 @@
 import logging
 import re
 
-from toon_format import decode as _toon_decode
-from toon_format import encode as _toon_encode
+from py_toon_format import decode as _toon_decode
+from py_toon_format import encode as _toon_encode
 
 logger = logging.getLogger("zam-ai-core-api.toon")
 
-_TOON_BLOCK_RE = re.compile(r"```(?:toon)?\s*\n?(.*?)\n?```", re.DOTALL)
+_TOON_BLOCK_RE = re.compile(r"```toon\s*\n?(.*?)\n?```", re.DOTALL)
+_JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?```", re.DOTALL)
+_CODE_BLOCK_RE = re.compile(r"```")
 
 
 def encode_toon(data: object) -> str:
@@ -42,7 +44,10 @@ def _try_parse_toon(text: str) -> dict | None:
         result = decode_toon(match.group(1).strip())
         if isinstance(result, dict):
             return result
-    result = decode_toon(text.strip())
+    stripped = text.strip()
+    if not stripped or stripped.startswith("{") or _CODE_BLOCK_RE.search(stripped):
+        return None
+    result = decode_toon(stripped)
     if isinstance(result, dict):
         return result
     return None
@@ -51,7 +56,7 @@ def _try_parse_toon(text: str) -> dict | None:
 def _try_parse_json(text: str) -> dict | None:
     import json
 
-    match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
+    match = _JSON_BLOCK_RE.search(text)
     if match:
         try:
             return json.loads(match.group(1).strip())
