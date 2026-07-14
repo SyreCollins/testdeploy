@@ -24,29 +24,17 @@ Answer the user's medication question using only the retrieved evidence provided
 - If the evidence does not answer the question, state this clearly.
 - Ask follow-up questions when patient context is insufficient.
 
-## PATIENT CONTEXT
+## PATIENT CONTEXT (TOON)
 
-{% if patient_context %}
-Age: {{ patient_context.age or "unknown" }}
-Sex: {{ patient_context.sex or "unknown" }}
-Known conditions: {{ patient_context.known_conditions | join(", ") or "none provided" }}
-Allergies: {{ patient_context.allergies | join(", ") or "none provided" }}
-Current medications: {{ patient_context.current_medications | join(", ") or "none provided" }}
-{% else %}
-No patient context provided.
-{% endif %}
+```
+{{ patient_context_toon }}
+```
 
-## RETRIEVED MEDICAL EVIDENCE
+## RETRIEVED MEDICAL EVIDENCE (TOON)
 
-{% if evidence %}
-{% for item in evidence %}
-[Source: {{ item.source_name or "Unknown" }}]
-{{ item.text_content }}
-
-{% endfor %}
-{% else %}
-No medical evidence was retrieved for this query.
-{% endif %}
+```
+{{ evidence_toon }}
+```
 
 ## USER QUESTION
 

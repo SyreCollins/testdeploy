@@ -35,18 +35,11 @@ Provide detailed medication information for the requested drug using only the re
 All available information.
 {% endif %}
 
-## RETRIEVED MEDICAL EVIDENCE
+## RETRIEVED MEDICAL EVIDENCE (TOON)
 
-{% if evidence %}
-{% for item in evidence %}
-[Source: {{ item.source_name or "Unknown" }}]
-Section: {{ item.chunk_type or "general" }}
-{{ item.text_content }}
-
-{% endfor %}
-{% else %}
-No evidence was retrieved for this drug.
-{% endif %}
+```
+{{ evidence_toon }}
+```
 
 ## OUTPUT FORMAT
 

@@ -24,31 +24,23 @@ Check for potential drug interactions between the listed medications using only 
 - If a medication cannot be identified, list it in unknowns.
 - Recommend consulting a clinician or pharmacist for high-severity interactions.
 
-## MEDICATIONS TO CHECK
+## MEDICATIONS TO CHECK (TOON)
 
-{% for med in medications %}
-- {{ med.name }}{% if med.dose %} ({{ med.dose }}){% endif %}
-{% endfor %}
+```
+{{ medications_toon }}
+```
 
-## PATIENT CONTEXT
+## PATIENT CONTEXT (TOON)
 
-{% if patient_context %}
-Age: {{ patient_context.age or "unknown" }}
-Known conditions: {{ patient_context.known_conditions | join(", ") or "none provided" }}
-Current medications: {{ patient_context.current_medications | join(", ") or "none provided" }}
-{% endif %}
+```
+{{ patient_context_toon }}
+```
 
-## RETRIEVED MEDICAL EVIDENCE
+## RETRIEVED MEDICAL EVIDENCE (TOON)
 
-{% if evidence %}
-{% for item in evidence %}
-[Source: {{ item.source_name or "Unknown" }}]
-{{ item.text_content }}
-
-{% endfor %}
-{% else %}
-No interaction evidence was retrieved.
-{% endif %}
+```
+{{ evidence_toon }}
+```
 
 ## OUTPUT FORMAT
 

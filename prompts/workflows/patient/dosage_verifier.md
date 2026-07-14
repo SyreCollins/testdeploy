@@ -24,53 +24,32 @@ Verify whether the supplied medication dosage is appropriate for the patient usi
 - If the dosage is within the typical range, state that clearly.
 - If the dosage exceeds or falls below the typical range, flag it as a warning.
 
-## MEDICATION
+## MEDICATION (TOON)
 
-Name: {{ medication.name }}
-Strength: {{ medication.strength or "not specified" }}
-Instructions: {{ medication.instructions or "not specified" }}
+```
+{{ medication_toon }}
+```
 
-## PATIENT CONTEXT
+## PATIENT CONTEXT (TOON)
 
-{% if patient_context %}
-Age: {{ patient_context.age or "unknown" }}
-Weight: {{ patient_context.weight_kg or "not provided" }}
-Known conditions: {{ patient_context.known_conditions | join(", ") or "none provided" }}
-Current medications: {{ patient_context.current_medications | join(", ") or "none provided" }}
-{% else %}
-No patient context provided.
-{% endif %}
+```
+{{ patient_context_toon }}
+```
 
-## RETRIEVED MEDICAL EVIDENCE
+## RETRIEVED MEDICAL EVIDENCE (TOON)
 
-{% if evidence %}
-{% for item in evidence %}
-[Source: {{ item.source_name or "Unknown" }}]
-{{ item.text_content }}
-
-{% endfor %}
-{% else %}
-No dosage evidence was retrieved.
-{% endif %}
+```
+{{ evidence_toon }}
+```
 
 ## OUTPUT FORMAT
 
-Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+Return ONLY valid TOON format — no markdown, no extra text, no JSON:
 
-```json
-{
-  "dosages": [
-    {
-      "medication_name": "drug name",
-      "stated_dosage": "dosage as prescribed",
-      "assessment": "verified | caution | out_of_range | requires_review",
-      "typical_range": "typical range from evidence or null",
-      "flags": ["above_range", "below_range", "missing_weight", "missing_age", "renal_concern"],
-      "citation_ids": ["c1", "c2"]
-    }
-  ],
-  "missing_context": ["list of missing patient info needed"]
-}
+```toon
+dosages[1]{medication_name,stated_dosage,assessment,typical_range,flags,citation_ids}:
+  drug name,dosage as prescribed,verified,typical range from evidence,above_range,c1
+missing_context[1]: list of missing patient info needed
 ```
 
-If the dosage is within the typical range, set assessment to "verified". If missing critical context like weight or renal function, include relevant flags and list them in missing_context.
+If the dosage is within the typical range, set assessment to "verified". If missing critical context like weight or renal function, include relevant flags and list them in missing_context. For flags, use a comma-separated list in the flags field.

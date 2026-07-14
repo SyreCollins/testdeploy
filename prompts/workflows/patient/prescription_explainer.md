@@ -27,47 +27,27 @@ Explain the supplied prescription in patient-friendly language using retrieved m
 
 {{ prescription_text }}
 
-## PATIENT CONTEXT
+## PATIENT CONTEXT (TOON)
 
-{% if patient_context %}
-Age: {{ patient_context.age or "unknown" }}
-Known conditions: {{ patient_context.known_conditions | join(", ") or "none provided" }}
-Current medications: {{ patient_context.current_medications | join(", ") or "none provided" }}
-{% endif %}
+```
+{{ patient_context_toon }}
+```
 
-## RETRIEVED MEDICAL EVIDENCE
+## RETRIEVED MEDICAL EVIDENCE (TOON)
 
-{% if evidence %}
-{% for item in evidence %}
-[Source: {{ item.source_name or "Unknown" }}]
-{{ item.text_content }}
-
-{% endfor %}
-{% else %}
-No drug information was retrieved.
-{% endif %}
+```
+{{ evidence_toon }}
+```
 
 ## OUTPUT FORMAT
 
-Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+Return ONLY valid TOON format — no markdown, no extra text, no JSON:
 
-```json
-{
-  "summary": "brief patient-friendly summary of the prescription",
-  "sections": [
-    {
-      "title": "What is this medication for?",
-      "content": "explanation of the medication's purpose",
-      "citation_ids": ["c1", "c2"]
-    },
-    {
-      "title": "How to take it",
-      "content": "usage instructions",
-      "citation_ids": ["c3"]
-    }
-  ],
-  "warnings": ["list of important warnings based on evidence"]
-}
+```toon
+summary: brief patient-friendly summary of the prescription
+sections[1]{title,content,citation_ids}:
+  What is this medication for?,explanation of the medication's purpose,c1,c2
+warnings[1]: list of important warnings based on evidence
 ```
 
-Include sections relevant to the prescription such as medication purpose, how to take it, common side effects, and important warnings. Set warnings to an empty list if none are identified.
+Include sections relevant to the prescription such as medication purpose, how to take it, common side effects, and important warnings. Set warnings to an empty list if none are identified (`warnings[0]:` with no items).

@@ -2,6 +2,7 @@ import logging
 
 from app.ai.prompts.builder import PromptBuilder
 from app.ai.prompts.registry import PromptRegistry
+from app.ai.toon import encode_toon
 
 logger = logging.getLogger("zam-ai-core-api.prompt-manager")
 
@@ -38,6 +39,8 @@ class PromptManager:
             evidence=evidence,
             patient_context=patient_context,
             safety_requirements=safety_requirements,
+            evidence_toon=encode_toon(evidence),
+            patient_context_toon=encode_toon(patient_context or {}),
         )
 
         return builder.build(), None
@@ -60,6 +63,9 @@ class PromptManager:
             evidence=evidence,
             patient_context=patient_context,
             safety_requirements=safety_requirements,
+            medications_toon=encode_toon(medications),
+            evidence_toon=encode_toon(evidence),
+            patient_context_toon=encode_toon(patient_context or {}),
         )
 
         return builder.build(), None
@@ -82,6 +88,7 @@ class PromptManager:
             evidence=evidence,
             requested_sections=requested_sections or [],
             safety_requirements=safety_requirements,
+            evidence_toon=encode_toon(evidence),
         )
 
         return builder.build(), None
@@ -102,6 +109,7 @@ class PromptManager:
             symptoms=symptoms,
             patient_context=patient_context,
             safety_requirements=safety_requirements,
+            patient_context_toon=encode_toon(patient_context or {}),
         )
 
         return builder.build(), None
@@ -122,6 +130,9 @@ class PromptManager:
             evidence=evidence,
             patient_context=patient_context,
             safety_requirements=safety_requirements,
+            medications_toon=encode_toon(medications),
+            evidence_toon=encode_toon(evidence),
+            patient_context_toon=encode_toon(patient_context or {}),
         )
         return builder.build(), None
 
@@ -141,6 +152,9 @@ class PromptManager:
             evidence=evidence,
             patient_context=patient_context,
             safety_requirements=safety_requirements,
+            medication_toon=encode_toon(medication),
+            evidence_toon=encode_toon(evidence),
+            patient_context_toon=encode_toon(patient_context or {}),
         )
         return builder.build(), None
 
@@ -160,6 +174,8 @@ class PromptManager:
             evidence=evidence,
             patient_context=patient_context,
             safety_requirements=safety_requirements,
+            evidence_toon=encode_toon(evidence),
+            patient_context_toon=encode_toon(patient_context or {}),
         )
         return builder.build(), None
 

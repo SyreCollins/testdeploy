@@ -1,6 +1,4 @@
-import json
 import logging
-import re
 import uuid
 from typing import Any
 
@@ -13,6 +11,7 @@ from app.ai.prompts.manager import PromptManager
 from app.ai.safety.base import RiskLevel, SafetyAction, SafetyContext, SafetyDecision
 from app.ai.safety.engine import evaluate_safety
 from app.ai.scoring.confidence import ConfidenceScorer
+from app.ai.toon import parse_response
 from app.rag.service import RetrievalService
 
 logger = logging.getLogger("zam-ai-core-api.orchestrator")
@@ -147,16 +146,7 @@ class ConversationOrchestrator:
 
     @staticmethod
     def _parse_json_from_response(text: str) -> dict | None:
-        match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(1).strip())
-            except json.JSONDecodeError:
-                pass
-        try:
-            return json.loads(text.strip())
-        except json.JSONDecodeError:
-            return None
+        return parse_response(text)
 
     def _model_unavailable_result(self, workflow: str, req_id: str) -> WorkflowResult:
         return WorkflowResult(

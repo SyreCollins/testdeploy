@@ -5,9 +5,9 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-## State (~210 tests, 0 lint errors)
+## State (~175 tests pass, 0 lint errors)
 
-### ✅ Completed (this session — 2026-07-09)
+### ✅ Completed (this session — 2026-07-14)
 
 | Area | Details |
 |---|---|
@@ -16,6 +16,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Missing workflow unit tests** | `tests/test_orchestrator_workflows.py` — 21 tests for `run_medical_qa`, `run_interaction_check`, `run_drug_info`, `run_symptom_guidance` with mocked dependencies |
 | **Intent classifier expanded** | Added 6 new intents to `Intent` enum + `IntentClassifier.PATTERNS`: `CONTRAINDICATION_CHECK`, `DOSAGE_VERIFY`, `PRESCRIPTION_EXPLAIN`, `DOCTOR_ASSIST`, `PHARMACY_ASSIST`, `REMINDERS`. Updated `run_workflow` routing — existing 3 route to real `run_*` methods, new 3 return placeholder. Test file expanded from 14 to 25 tests |
 | **`asyncio_mode = auto`** | Configured in `pyproject.toml` so async tests work without `--asyncio-mode=auto` flag |
+| **TOON format for LLM prompts** | Switched structured data in prompts to TOON (Token-Oriented Object Notation) — ~30-40% token reduction. New `app/ai/toon/` module with `encode_toon`, `decode_toon`, `parse_response`. All 7 workflow templates TOON-encode evidence/patient_context/medications. 3 templates (contraindication, dosage, prescription) ask for TOON output; orchestrator's `_parse_json_from_response` replaced with TOON-first `parse_response()`. |
 
 ### ✅ Completed (prior sessions)
 
@@ -52,5 +53,6 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - Routes live at `app/api/routes/` (not `app/api/v1/ai/`) and are prefixed `/v1` via `app/main.py`
 - Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
 - 0 TODO/FIXME/HACK/XXX comments in codebase
-- `.env` has real keys for Jina embeddings, Pinecone, and Voyage — Claude key still needs to be set
+- 7 pre-existing test failures: 4 in `test_model_gateway.py` (env has `ZAM_AI_MODEL_PROVIDER=claude` so factory tests expecting Mock fail) and 3 in `test_health.py` (no Pinecone DNS in this env)
+- `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
 - Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started

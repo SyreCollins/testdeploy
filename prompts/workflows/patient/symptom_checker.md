@@ -27,15 +27,11 @@ Provide non-diagnostic symptom guidance and triage support. Assess the urgency o
 - Clearly communicate uncertainty.
 - Recommend appropriate care level (emergency, urgent, non-urgent) based on symptom severity.
 
-## PATIENT CONTEXT
+## PATIENT CONTEXT (TOON)
 
-{% if patient_context %}
-Age: {{ patient_context.age or "unknown" }}
-Sex: {{ patient_context.sex or "unknown" }}
-Known conditions: {{ patient_context.known_conditions | join(", ") or "none provided" }}
-{% else %}
-No patient context provided.
-{% endif %}
+```
+{{ patient_context_toon }}
+```
 
 ## REPORTED SYMPTOMS
 

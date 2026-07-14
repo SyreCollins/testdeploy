@@ -23,54 +23,33 @@ Check whether the supplied medications are contraindicated for the provided pati
 - Explain contraindications in clear, patient-friendly language.
 - Recommend consulting a clinician for high-risk findings.
 
-## MEDICATIONS
+## MEDICATIONS (TOON)
 
-{% for med in medications %}
-- {{ med.name }}{% if med.dose %} ({{ med.dose }}){% endif %}
-{% endfor %}
+```
+{{ medications_toon }}
+```
 
-## PATIENT CONTEXT
+## PATIENT CONTEXT (TOON)
 
-{% if patient_context %}
-Age: {{ patient_context.age or "unknown" }}
-Known conditions: {{ patient_context.known_conditions | join(", ") or "none provided" }}
-Allergies: {{ patient_context.allergies | join(", ") or "none provided" }}
-Current medications: {{ patient_context.current_medications | join(", ") or "none provided" }}
-{% else %}
-No patient context provided.
-{% endif %}
+```
+{{ patient_context_toon }}
+```
 
-## RETRIEVED MEDICAL EVIDENCE
+## RETRIEVED MEDICAL EVIDENCE (TOON)
 
-{% if evidence %}
-{% for item in evidence %}
-[Source: {{ item.source_name or "Unknown" }}]
-{{ item.text_content }}
-
-{% endfor %}
-{% else %}
-No contraindication evidence was retrieved.
-{% endif %}
+```
+{{ evidence_toon }}
+```
 
 ## OUTPUT FORMAT
 
-Return ONLY valid JSON with this exact structure — no markdown, no extra text:
+Return ONLY valid TOON format — no markdown, no extra text, no JSON:
 
-```json
-{
-  "contraindications": [
-    {
-      "medication": "drug name",
-      "condition": "contraindicated condition",
-      "severity": "contraindicated | precaution | no_contraindication",
-      "reason": "brief patient-friendly explanation",
-      "evidence_summary": "summary of supporting evidence",
-      "citation_ids": ["c1", "c2"]
-    }
-  ],
-  "missing_context": ["list of missing patient info needed"],
-  "unknowns": ["medications that could not be evaluated"]
-}
+```toon
+contraindications[1]{medication,condition,severity,reason,evidence_summary,citation_ids}:
+  drug name,contraindicated condition,contraindicated,brief patient-friendly explanation,summary of supporting evidence,c1,c2
+missing_context[1]: list of missing patient info needed
+unknowns[1]: medications that could not be evaluated
 ```
 
-If no contraindications are found, return an empty contraindications array. If a medication has no known contraindications, include it with severity "no_contraindication".
+If no contraindications are found, set contraindications to an empty array: `contraindications[0]:` with no rows. If a medication has no known contraindications, include it with severity "no_contraindication".

@@ -13,3 +13,4 @@ reviewed: 2026-07-06
 - List medication names, dosages, and instructions clearly.
 - Separate general medical information from patient-specific guidance.
 - End with a disclaimer to consult a healthcare professional when relevant.
+- When a structured output schema is specified below, respond using TOON format (Token-Oriented Object Notation) instead of JSON — fewer tokens, same structure.
