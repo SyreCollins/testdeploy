@@ -1,8 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock
 
 from app.ai.orchestrator.models import WorkflowResult
-
 
 API_PREFIX = "/v1/ai"
 
@@ -172,7 +170,10 @@ class TestContraindicationCheck:
         })
         resp = client.post(self.ENDPOINT, json={
             **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
-            "input": {"medications": [{"name": "ibuprofen"}], "patient_context": {"age": 60, "known_conditions": ["peptic ulcer disease"]}},
+            "input": {
+                "medications": [{"name": "ibuprofen"}],
+                "patient_context": {"age": 60, "known_conditions": ["peptic ulcer disease"]},
+            },
         }, headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["result"]["contraindications"][0]["severity"] == "contraindicated"
@@ -206,7 +207,10 @@ class TestDosageVerify:
         })
         resp = client.post(self.ENDPOINT, json={
             **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
-            "input": {"medication": {"name": "amoxicillin", "strength": "500 mg", "instructions": "three times daily"}, "patient_context": {"age": 30}},
+            "input": {
+                "medication": {"name": "amoxicillin", "strength": "500 mg", "instructions": "three times daily"},
+                "patient_context": {"age": 30},
+            },
         }, headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["result"]["dosages"][0]["assessment"] == "verified"
@@ -225,7 +229,10 @@ class TestDosageVerify:
         })
         resp = client.post(self.ENDPOINT, json={
             **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
-            "input": {"medication": {"name": "gentamicin", "strength": "240 mg", "instructions": "once daily"}, "patient_context": {"age": 70}},
+            "input": {
+                "medication": {"name": "gentamicin", "strength": "240 mg", "instructions": "once daily"},
+                "patient_context": {"age": 70},
+            },
         }, headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()["result"]

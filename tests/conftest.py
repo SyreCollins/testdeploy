@@ -5,9 +5,8 @@ from fastapi.testclient import TestClient
 
 pytest_plugins = ("pytest_asyncio",)
 
-from app.core.config import Settings
-from app.main import create_app
-
+from app.core.config import Settings  # noqa: E402
+from app.main import create_app  # noqa: E402
 
 _TEST_API_KEY = "test-key-123"
 

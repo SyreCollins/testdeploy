@@ -1,11 +1,9 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.ai.gateway.base import ModelResponse
 from app.ai.orchestrator import ConversationOrchestrator
-from app.ai.orchestrator.models import Intent
-from app.ai.safety.base import RiskLevel, SafetyAction, SafetyDecision
-
 
 _RETRIEVAL_RESULT = {
     "citation_id": "c1",

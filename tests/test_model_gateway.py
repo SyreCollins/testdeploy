@@ -115,22 +115,22 @@ class TestFactory:
             get_model_provider(Settings(model_provider="unknown"))
 
     def test_no_provider_configured_returns_mock(self) -> None:
-        provider = get_model_provider(Settings(model_provider=""))
+        provider = get_model_provider(Settings(model_provider="", _env_file=None))
         assert isinstance(provider, MockModelProvider)
 
     def test_claude_without_key_skips(self) -> None:
-        provider = get_model_provider(Settings(model_provider=""))
+        provider = get_model_provider(Settings(model_provider="", _env_file=None))
         assert isinstance(provider, MockModelProvider)
 
     def test_gemini_without_key_skips(self) -> None:
-        provider = get_model_provider(Settings(model_provider=""))
+        provider = get_model_provider(Settings(model_provider="", _env_file=None))
         assert isinstance(provider, MockModelProvider)
 
     def test_auto_detect_returns_mock_when_no_keys(self) -> None:
         from app.ai.gateway.factory import AUTO_DETECT_ORDER
         assert AUTO_DETECT_ORDER == ["claude", "gemini"]
 
-        provider = get_model_provider(Settings(model_provider=""))
+        provider = get_model_provider(Settings(model_provider="", _env_file=None))
         assert isinstance(provider, MockModelProvider)
 
 
@@ -149,7 +149,7 @@ class TestClaudeProvider:
 
     def test_instantiation_fails_without_key(self) -> None:
         with pytest.raises(ValueError, match="ZAM_AI_CLAUDE_API_KEY is not set"):
-            get_model_provider(Settings(model_provider="claude"))
+            get_model_provider(Settings(model_provider="claude", _env_file=None))
 
 
 class TestGeminiProvider:
@@ -167,7 +167,7 @@ class TestGeminiProvider:
 
     def test_instantiation_fails_without_key(self) -> None:
         with pytest.raises(ValueError, match="ZAM_AI_GEMINI_API_KEY is not set"):
-            get_model_provider(Settings(model_provider="gemini"))
+            get_model_provider(Settings(model_provider="gemini", _env_file=None))
 
 
 class TestBaseProvider:
