@@ -271,6 +271,107 @@ class TestPrescriptionExplain:
         assert resp.status_code == 422
 
 
+class TestChat:
+    ENDPOINT = f"{API_PREFIX}/chat"
+
+    def _mock_chat(
+        self, app, intent: str, structured: dict | None = None,
+        response_text: str = "Chat result.", confidence: float = 0.85,
+    ):
+        from app.ai.orchestrator.models import Intent
+        mock = AsyncMock(spec=app.state.orchestrator)
+        mock.classify_intent.return_value = (Intent(intent), confidence)
+        result = _make_success_result(intent, response_text, structured or {})
+        mock.run_workflow.return_value = result
+        app.state.orchestrator = mock
+        return mock
+
+    def test_success_medical_qa(self, client, auth_headers, app):
+        self._mock_chat(app, "medical_qa", {
+            "medical_claims": [{"claim": "NSAIDs increase bleeding risk.", "citation_ids": ["c1"]}],
+            "missing_context": [],
+            "follow_up_questions": [],
+        })
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {"message": "Can I take ibuprofen with stomach ulcers?"},
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["workflow"] == "chat"
+        assert data["result"]["intent"] == "medical_qa"
+        assert data["result"]["confidence"] == 0.85
+        assert len(data["citations"]) == 1
+
+    def test_success_drug_info(self, client, auth_headers, app):
+        self._mock_chat(app, "drug_info", {
+            "normalized_drug": {"input_name": "amoxicillin"},
+            "sections": {"uses": "Treats infections."},
+        })
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {"message": "Tell me about amoxicillin"},
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["result"]["intent"] == "drug_info"
+        assert data["result"]["answer"] == "Chat result."
+
+    def test_handles_unsupported_intent(self, client, auth_headers, app):
+        self._mock_chat(app, "general", response_text="I can only answer medical questions.")
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {"message": "What is the weather like?"},
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["result"]["intent"] == "general"
+
+    def test_handles_emergency(self, client, auth_headers, app):
+        self._mock_chat(app, "emergency", response_text="Please seek emergency medical care immediately.")
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {"message": "I have chest pain"},
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["result"]["intent"] == "emergency"
+
+    def test_with_patient_context(self, client, auth_headers, app):
+        self._mock_chat(app, "medical_qa", {
+            "medical_claims": [], "missing_context": [], "follow_up_questions": [],
+        })
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {
+                "message": "Is this safe?",
+                "patient_context": {"age": 30, "known_conditions": ["asthma"], "allergies": ["sulfa"]},
+            },
+        }, headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+
+    def test_requires_auth(self, client, app):
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {"message": "test"},
+        })
+        assert resp.status_code == 401
+
+    def test_invalid_body(self, client, auth_headers):
+        resp = client.post(self.ENDPOINT, json={}, headers=auth_headers)
+        assert resp.status_code == 422
+
+    def test_empty_message(self, client, auth_headers):
+        resp = client.post(self.ENDPOINT, json={
+            **_BASE, "actor_context": ACTOR, "authorization_context": AUTH,
+            "input": {"message": ""},
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+
+
 def _mock_mock(app, workflow: str, structured: dict, response_text: str = "Success."):
     mock = AsyncMock(spec=app.state.orchestrator)
     result = _make_success_result(workflow, response_text, structured)

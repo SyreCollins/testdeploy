@@ -33,6 +33,9 @@ def mock_deps():
     prompt_mgr.build_interaction_check_prompt.return_value = ("system prompt", "user prompt")
     prompt_mgr.build_drug_info_prompt.return_value = ("system prompt", "user prompt")
     prompt_mgr.build_symptom_guidance_prompt.return_value = ("system prompt", "user prompt")
+    prompt_mgr.build_contraindication_check_prompt.return_value = ("system prompt", "user prompt")
+    prompt_mgr.build_dosage_verify_prompt.return_value = ("system prompt", "user prompt")
+    prompt_mgr.build_prescription_explain_prompt.return_value = ("system prompt", "user prompt")
     prompt_mgr.get_workflow_version.return_value = "1.0.0"
     model = AsyncMock()
     model.generate.return_value = ModelResponse(
@@ -263,3 +266,119 @@ class TestRunSymptomGuidance:
             symptoms="Cough", request_id="req-sg-1",
         )
         assert result.audit_metadata.get("trace_id") == "req-sg-1"
+
+
+class TestRunWorkflow:
+    async def test_classifies_and_delegates_medical_qa(self, orch):
+        result = await orch.run_workflow(
+            message="is it safe to take this medication",
+        )
+        assert result.success is True
+        assert result.workflow == "medical_qa"
+
+    async def test_classifies_and_delegates_drug_info(self, orch):
+        result = await orch.run_workflow(
+            message="tell me about the drug amoxicillin",
+        )
+        assert result.success is True
+        assert result.workflow == "drug_info"
+
+    async def test_classifies_and_delegates_symptom_guidance(self, orch):
+        result = await orch.run_workflow(
+            message="I have a headache and fever",
+        )
+        assert result.success is True
+        assert result.workflow == "symptom_guidance"
+
+    async def test_classifies_and_delegates_interaction_check(self, orch):
+        result = await orch.run_workflow(
+            message="drug interaction warfarin ibuprofen",
+        )
+        assert result.success is True
+        assert result.workflow == "interaction_check"
+
+    async def test_classifies_and_delegates_contraindication_check(self, orch):
+        result = await orch.run_workflow(
+            message="contraindication for ibuprofen with stomach ulcer",
+        )
+        assert result.success is True
+        assert result.workflow == "contraindication_check"
+
+    async def test_classifies_and_delegates_dosage_verify(self, orch):
+        result = await orch.run_workflow(
+            message="is the dosage correct for amoxicillin",
+        )
+        assert result.success is True
+        assert result.workflow == "dosage_verify"
+
+    async def test_classifies_and_delegates_prescription_explain(self, orch):
+        result = await orch.run_workflow(
+            message="explain this prescription: Amoxicillin 500mg tid",
+        )
+        assert result.success is True
+        assert result.workflow == "prescription_explain"
+
+    async def test_emergency_intent(self, orch):
+        result = await orch.run_workflow(
+            message="I have chest pain and difficulty breathing",
+        )
+        assert result.success is True
+        assert result.workflow == "emergency"
+        assert result.structured_result.get("triage_level") == "emergency"
+
+    async def test_unsupported_intent_returns_general_fallback(self, orch):
+        result = await orch.run_workflow(
+            message="What is the weather like today?",
+        )
+        assert result.success is False
+        assert result.error_code == "unsupported_intent"
+
+    async def test_passes_patient_context(self, orch):
+        result = await orch.run_workflow(
+            message="is it safe to take this medication",
+            patient_context={
+                "age": 45,
+                "sex": "female",
+                "known_conditions": ["asthma"],
+                "allergies": ["penicillin"],
+                "current_medications": ["albuterol"],
+            },
+        )
+        assert result.success is True
+
+    async def test_with_explicit_intent_skips_classification(self, orch):
+        from app.ai.orchestrator.models import Intent
+        result = await orch.run_workflow(
+            message="Tell me about amoxicillin",
+            intent=Intent.DRUG_INFO,
+        )
+        assert result.success is True
+        assert result.workflow == "drug_info"
+
+    async def test_with_request_id(self, orch):
+        result = await orch.run_workflow(
+            message="is it safe to take this medication",
+            request_id="req-rw-1",
+        )
+        assert result.audit_metadata.get("trace_id") == "req-rw-1"
+
+    async def test_doctor_assist_returns_placeholder(self, orch):
+        result = await orch.run_workflow(
+            message="doctor assist with medication review",
+        )
+        assert result.success is False
+        assert result.error_code == "feature_not_implemented"
+
+    async def test_pharmacy_assist_returns_placeholder(self, orch):
+        result = await orch.run_workflow(
+            message="pharmacy assist with drug explanation",
+        )
+        assert result.success is False
+        assert result.error_code == "feature_not_implemented"
+
+    async def test_reminders_returns_placeholder(self, orch):
+        result = await orch.run_workflow(
+            message="set a reminder for my medication",
+        )
+        assert result.success is False
+        assert result.error_code == "feature_not_implemented"

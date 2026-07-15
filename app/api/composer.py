@@ -1,6 +1,8 @@
 from app.ai.orchestrator.models import WorkflowResult
 from app.api.schemas.ai import (
     AuditMetadata,
+    ChatResponse,
+    ChatResult,
     CitationItem,
     ConfidenceMetadata,
     ContraindicationCheckRequest,
@@ -289,6 +291,31 @@ class ResponseComposer:
                 missing_context=structured.get("missing_context") or [],
             ),
             safety=self._safety(result, {"risk_level": "low"}),
+            citations=self._citations(result),
+            confidence=self._confidence(result),
+            audit=self._audit(result),
+        )
+
+    def chat(
+        self,
+        result: WorkflowResult,
+        request_id: str | None,
+        intent: str,
+        confidence: float,
+    ) -> ChatResponse | ErrorResponse:
+        if not result.success:
+            return self._error(result)
+
+        return ChatResponse(
+            request_id=request_id,
+            status="success",
+            workflow="chat",
+            result=ChatResult(
+                intent=intent,
+                confidence=confidence,
+                answer=result.response_text,
+            ),
+            safety=self._safety(result),
             citations=self._citations(result),
             confidence=self._confidence(result),
             audit=self._audit(result),

@@ -5,18 +5,16 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-## State (~175 tests pass, 0 lint errors)
+## State (~221 tests pass, 0 lint errors, CI/CD active)
 
-### ✅ Completed (this session — 2026-07-14)
+### ✅ Completed (this session — 2026-07-15)
 
 | Area | Details |
 |---|---|
-| **3 stubbed endpoint outputs fixed** | `contraindications/check`, `dosage/verify`, `prescriptions/explain` — added `_parse_json_from_response()` helper; updated prompt templates with JSON output schemas; orchestrator now parses LLM output instead of hardcoded stubs |
-| **End-to-end integration tests** | `tests/test_ai_integration.py` — 16 tests covering all 7 AI endpoints via FastAPI `TestClient` with mocked orchestrator. Added `tests/conftest.py` with shared fixtures, env cleanup, and key store reset |
-| **Missing workflow unit tests** | `tests/test_orchestrator_workflows.py` — 21 tests for `run_medical_qa`, `run_interaction_check`, `run_drug_info`, `run_symptom_guidance` with mocked dependencies |
-| **Intent classifier expanded** | Added 6 new intents to `Intent` enum + `IntentClassifier.PATTERNS`: `CONTRAINDICATION_CHECK`, `DOSAGE_VERIFY`, `PRESCRIPTION_EXPLAIN`, `DOCTOR_ASSIST`, `PHARMACY_ASSIST`, `REMINDERS`. Updated `run_workflow` routing — existing 3 route to real `run_*` methods, new 3 return placeholder. Test file expanded from 14 to 25 tests |
-| **`asyncio_mode = auto`** | Configured in `pyproject.toml` so async tests work without `--asyncio-mode=auto` flag |
-| **TOON format for LLM prompts** | Switched structured data in prompts to TOON (Token-Oriented Object Notation) — ~30-40% token reduction. New `app/ai/toon/` module with `encode_toon`, `decode_toon`, `parse_response`. All 7 workflow templates TOON-encode evidence/patient_context/medications. 3 templates (contraindication, dosage, prescription) ask for TOON output; orchestrator's `_parse_json_from_response` replaced with TOON-first `parse_response()`. |
+| **`/v1/ai/chat` endpoint wired up** | New `POST /v1/ai/chat` route — accepts free-text message, runs `classify_intent()` to detect intent, delegates to `orchestrator.run_workflow()`. Returns `ChatResponse` with `intent`, `confidence`, `answer`, safety/citations/confidence/audit metadata. Added `ChatInput`, `ChatRequest`, `ChatResult`, `ChatResponse` schemas + `composer.chat()` method. 8 integration tests + 15 `run_workflow` unit tests covering all 7 intents, emergency, unsupported, patient context, explicit intent, request_id, and placeholder intents |
+| **Parallel multi-drug retrieval** | `run_interaction_check` and `run_contraindication_check` use `asyncio.gather()` to search all drugs concurrently instead of sequentially. 3-drug check drops from 3× latency to 1× |
+| **N+1 query eliminated** | New `RagRegistry.get_chunk_metadata_batch()` loads chunk + document + source metadata in a single `selectinload`-based query (3 SQL calls total vs 3×N). `RetrievalService.search()` collects chunk IDs, makes one batch call, maps results |
+| **LLM timeout + retry** | New `ZAM_AI_MODEL_TIMEOUT` (default 60s) and `ZAM_AI_MODEL_RETRY_COUNT` (default 1) settings. `_call_model()` wraps `generate()` in `asyncio.wait_for()` — hanging API calls no longer stall indefinitely. Configurable retry on timeout/failure |
 
 ### ✅ Completed (prior sessions)
 
@@ -34,6 +32,17 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Audit query endpoints** | `GET /v1/audit/traces` + `GET /v1/audit/traces/{trace_id}` — reads from in-memory AuditTraceWriter ring buffer |
 | **Model gateway tests** | 20 tests — `ModelResponse`, `StreamEvent`, `MockModelProvider` (generate + stream), factory auto-detect, Claude/Gemini instantiation with/without keys |
 
+### 🧠 Architecture notes
+
+- `ConversationOrchestrator` is instantiated in `app/main.py:75` and stored in `app.state.orchestrator`. Every route retrieves it via `_orch(request)` and calls specific `run_*` methods directly.
+- `IntentClassifier` and `ConversationOrchestrator.classify_intent()` are **dead code in production** — fully tested but NOT wired to any route. Designed for a future `/v1/ai/chat` endpoint that was planned but never created.
+- **No `/v1/ai/chat` endpoint exists.** Frontend calls individual workflow endpoints directly.
+- Routes live at `app/api/routes/` and are prefixed `/v1` via `app/main.py`
+- Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
+- 0 TODO/FIXME/HACK/XXX comments in codebase
+- `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
+- Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
+
 ### ❌ Remaining Gaps
 
 | Priority | Area | What to do |
@@ -46,13 +55,4 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` (9 directories) and `app/integrations/*` (5 directories) — all just `__init__.py` |
 | **LOW** | `tests/__init__.py` | Add package init |
 | **LOW** | `test_admin_api.py` | Source file missing (only `__pycache__` remains) |
-| **LOW** | CI/CD | No `.github/workflows/`, no coverage config, no pre-commit |
 | **LOW** | Type checking | No mypy/pyright in dev deps or config |
-
-### Notes
-- Routes live at `app/api/routes/` (not `app/api/v1/ai/`) and are prefixed `/v1` via `app/main.py`
-- Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
-- 0 TODO/FIXME/HACK/XXX comments in codebase
-- 7 pre-existing test failures: 4 in `test_model_gateway.py` (env has `ZAM_AI_MODEL_PROVIDER=claude` so factory tests expecting Mock fail) and 3 in `test_health.py` (no Pinecone DNS in this env)
-- `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
-- Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started

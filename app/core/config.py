@@ -27,6 +27,9 @@ class Settings(BaseSettings):
 
     embedding_batch_timeout: int = 180
 
+    model_timeout: int = 60
+    model_retry_count: int = 1
+
     model_provider: str = ""
     claude_api_key: str | None = None
     claude_model: str = "claude-sonnet-4-6"

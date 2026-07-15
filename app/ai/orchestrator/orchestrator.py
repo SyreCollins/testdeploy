@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from typing import Any
@@ -101,16 +102,30 @@ class ConversationOrchestrator:
         max_tokens: int = 1024,
         temperature: float = 0.3,
     ) -> ModelResponse | None:
-        try:
-            return await self.model_provider.generate(
-                prompt=user_prompt or fallback_text,
-                system_prompt=system_prompt,
-                max_tokens=max_tokens,
-                temperature=temperature,
-            )
-        except Exception as e:
-            logger.error(f"Model generation failed: {e}")
-            return None
+        timeout = getattr(self.settings, "model_timeout", 60) if self.settings else 60
+        retries = getattr(self.settings, "model_retry_count", 1) if self.settings else 1
+        last_exc: Exception | None = None
+
+        for attempt in range(1 + retries):
+            try:
+                return await asyncio.wait_for(
+                    self.model_provider.generate(
+                        prompt=user_prompt or fallback_text,
+                        system_prompt=system_prompt,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                    ),
+                    timeout=timeout,
+                )
+            except TimeoutError:
+                last_exc = TimeoutError(f"Model generation timed out after {timeout}s (attempt {attempt + 1})")
+                logger.warning(f"{last_exc}")
+            except Exception as e:
+                last_exc = e
+                logger.warning(f"Model generation failed (attempt {attempt + 1}): {e}")
+
+        logger.error(f"Model generation failed after {1 + retries} attempts")
+        return None
 
     def _safety_block_result(
         self,
@@ -464,10 +479,10 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        all_results = []
-        for drug in drug_names:
-            results = await self.retrieval.search(query=drug, limit=5)
-            all_results.extend(results)
+        tasks = [self.retrieval.search(query=drug, limit=5) for drug in drug_names]
+        all_results: list[dict] = []
+        for batch in await asyncio.gather(*tasks):
+            all_results.extend(batch)
 
         self.audit.record_event(req_id, "retrieval", {
             "drugs": drug_names,
@@ -565,10 +580,10 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        all_results = []
-        for drug in drug_names:
-            results = await self.retrieval.search(query=drug, limit=5)
-            all_results.extend(results)
+        tasks = [self.retrieval.search(query=drug, limit=5) for drug in drug_names]
+        all_results: list[dict] = []
+        for batch in await asyncio.gather(*tasks):
+            all_results.extend(batch)
 
         self.audit.record_event(req_id, "retrieval", {
             "drugs": drug_names,

@@ -219,7 +219,8 @@ class RetrievalService:
             generic_name_filter=generic_name_filter,
         )
 
-        filtered = []
+        seen: list[dict] = []
+        chunk_ids: list[str] = []
         for r in results:
             meta = r.get("metadata", {})
             chunk_tier = meta.get("chunk_tier") or meta.get("source_trust_tier")
@@ -228,8 +229,17 @@ class RetrievalService:
             chunk_type = meta.get("chunk_type")
             if chunk_type_filter and chunk_type != chunk_type_filter:
                 continue
+            seen.append(r)
+            chunk_ids.append(r["chunk_id"])
 
-            source_meta = self.registry.get_source_metadata_for_chunk(r["chunk_id"])
+        metadata_map = self.registry.get_chunk_metadata_batch(chunk_ids)
+
+        filtered = []
+        for r in seen:
+            meta = r.get("metadata", {})
+            chunk_tier = meta.get("chunk_tier") or meta.get("source_trust_tier")
+            chunk_type = meta.get("chunk_type")
+            source_meta = metadata_map.get(r["chunk_id"]) or {}
             citation = {
                 "citation_id": r["chunk_id"],
                 "text_content": r["text_content"],
@@ -238,10 +248,10 @@ class RetrievalService:
                 "page_number": meta.get("page_number"),
                 "generic_name": meta.get("generic_name"),
                 "chunk_type": chunk_type,
-                "source_name": (source_meta or {}).get("source_name"),
-                "source_version": (source_meta or {}).get("source_version"),
+                "source_name": source_meta.get("source_name"),
+                "source_version": source_meta.get("source_version"),
                 "source_trust_tier": chunk_tier,
-                "document_title": (source_meta or {}).get("document_title"),
+                "document_title": source_meta.get("document_title"),
             }
             filtered.append(citation)
             if len(filtered) >= limit:

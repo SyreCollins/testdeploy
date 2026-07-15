@@ -1,6 +1,7 @@
 import logging
 from datetime import UTC, datetime
 
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import get_settings
@@ -157,3 +158,37 @@ class RagRegistry:
                 "publisher": source.publisher,
                 "jurisdiction": source.jurisdiction,
             }
+
+    def get_chunk_metadata_batch(self, chunk_ids: list[str]) -> dict[str, dict]:
+        """
+        Batch fetch chunk + document + source metadata in a single query.
+        Returns a dict keyed by chunk_id.
+        """
+        if not chunk_ids:
+            return {}
+
+        with Session(self.engine) as session:
+            statement = (
+                select(DocumentChunk)
+                .where(DocumentChunk.id.in_(chunk_ids))
+                .options(
+                    selectinload(DocumentChunk.document).selectinload(SourceDocument.source)
+                )
+            )
+            chunks = session.exec(statement).all()
+            result: dict[str, dict] = {}
+            for chunk in chunks:
+                doc = chunk.document
+                source = doc.source if doc else None
+                result[chunk.id] = {
+                    "chunk_id": chunk.id,
+                    "text_content": chunk.text_content,
+                    "section_path": chunk.section_path,
+                    "page_number": chunk.page_number,
+                    "document_title": doc.title if doc else None,
+                    "source_name": source.name if source else None,
+                    "source_version": source.version if source else None,
+                    "publisher": source.publisher if source else None,
+                    "jurisdiction": source.jurisdiction if source else None,
+                }
+            return result

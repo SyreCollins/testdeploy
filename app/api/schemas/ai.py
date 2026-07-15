@@ -349,6 +349,38 @@ class PrescriptionExplainResponse(BaseModel):
     audit: AuditMetadata = Field(default_factory=AuditMetadata)
 
 
+class ChatInput(BaseModel):
+    message: str = Field(min_length=1, examples=["Can I take ibuprofen if I have stomach ulcers?"])
+    patient_context: PatientContext = Field(default_factory=PatientContext)
+    conversation_context: ConversationContext = Field(default_factory=ConversationContext)
+
+
+class ChatRequest(BaseModel):
+    request_id: str | None = None
+    caller: CallerInfo = Field(default_factory=CallerInfo)
+    actor_context: ActorContext
+    authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    locale: Locale = Field(default_factory=Locale)
+    input: ChatInput
+
+
+class ChatResult(BaseModel):
+    intent: str
+    confidence: float
+    answer: str
+
+
+class ChatResponse(BaseModel):
+    request_id: str | None = None
+    status: str = "success"
+    workflow: str = "chat"
+    result: ChatResult | None = None
+    safety: SafetyMetadata = Field(default_factory=SafetyMetadata)
+    citations: list[CitationItem] = Field(default_factory=list)
+    confidence: ConfidenceMetadata = Field(default_factory=ConfidenceMetadata)
+    audit: AuditMetadata = Field(default_factory=AuditMetadata)
+
+
 class ErrorDetail(BaseModel):
     code: str
     message: str

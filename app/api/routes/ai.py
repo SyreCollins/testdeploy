@@ -5,6 +5,8 @@ from fastapi import APIRouter, Request
 from app.ai.orchestrator import ConversationOrchestrator
 from app.api.composer import ResponseComposer
 from app.api.schemas.ai import (
+    ChatRequest,
+    ChatResponse,
     ContraindicationCheckRequest,
     ContraindicationCheckResponse,
     DosageVerifyRequest,
@@ -157,3 +159,26 @@ async def prescription_explain(
         request_id=body.request_id,
     )
     return composer.prescription_explain(result, body)
+
+
+@router.post(
+    "/ai/chat",
+    response_model=ChatResponse | ErrorResponse,
+)
+async def chat(request: Request, body: ChatRequest) -> ChatResponse | ErrorResponse:
+    orch = _orch(request)
+    patient = body.input.patient_context
+    intent, confidence = orch.classify_intent(body.input.message)
+    result = await orch.run_workflow(
+        message=body.input.message,
+        intent=intent,
+        patient_context={
+            "age": patient.age,
+            "sex": patient.sex,
+            "known_conditions": patient.known_conditions,
+            "allergies": patient.allergies,
+            "current_medications": patient.current_medications,
+        },
+        request_id=body.request_id,
+    )
+    return composer.chat(result, body.request_id, intent.value, confidence)
