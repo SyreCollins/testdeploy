@@ -1,1 +1,12 @@
-{"caller":{"service":"zamda-backend","environment":"production"},"actor_context":{"actor_type":"patient","actor_id":"test-1","role":"patient"},"authorization_context":{"workflow":"medical_qa"},"input":{"question":"What is metformin used for?"}}
+{
+  "request_id": "test-curl-001",
+  "caller": { "service": "zamda-backend", "environment": "testing" },
+  "actor_context": { "actor_type": "patient", "actor_id": "p1", "role": "patient" },
+  "authorization_context": { "workflow": "medical_qa", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+  "locale": { "language": "en", "country": "NG" },
+  "input": {
+    "question": "What is amoxicillin used for?",
+    "patient_context": { "age": 35, "sex": "female", "known_conditions": [], "allergies": [], "current_medications": [] },
+    "conversation_context": { "conversation_id": null, "recent_messages": [] }
+  }
+}

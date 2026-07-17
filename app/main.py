@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 
 from app.ai.audit import AuditTraceWriter
 from app.ai.gateway import get_model_provider
@@ -35,6 +36,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         docs_url="/docs" if settings.enable_openapi_docs else None,
         redoc_url="/redoc" if settings.enable_openapi_docs else None,
         openapi_url="/openapi.json" if settings.enable_openapi_docs else None,
+        swagger_ui_parameters={"persistAuthorization": True},
     )
 
     app.state.settings = settings
@@ -91,6 +93,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(ai_router, prefix="/v1", tags=["ai"])
     app.include_router(keys_router, prefix="/v1/admin", tags=["admin"])
     app.include_router(audit_router, prefix="/v1", tags=["audit"])
+
+    def custom_openapi():
+        if app.openapi_schema:
+            return app.openapi_schema
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            openapi_version=app.openapi_version,
+            description=app.description,
+            routes=app.routes,
+        )
+        schema.setdefault("components", {}).setdefault("securitySchemes", {})
+        schema["components"]["securitySchemes"]["ApiKeyAuth"] = {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Zam-AI-Key",
+        }
+        schema["security"] = [{"ApiKeyAuth": []}]
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = custom_openapi
 
     return app
 

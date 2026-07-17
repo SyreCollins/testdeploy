@@ -7,7 +7,33 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ## State (~221 tests pass, 0 lint errors, CI/CD active)
 
-### ✅ Completed (this session — 2026-07-15)
+### ✅ Completed (this session — 2026-07-17)
+
+| Area | Details |
+|---|---|
+| **18 endpoint markdown docs** | `docs/endpoints/` — one `.md` file per endpoint (13 built + 5 planned). Each includes purpose, auth, full request/response JSON, field tables, safety rules, status codes, and code examples in 6 languages (cURL, JS fetch, Python, Node.js axios, Go, PHP). Ready for frontend dev to use with Nextra/Docusaurus/Starlight |
+| **SaaS readiness audit** | Reviewed codebase against Phase 8 requirements. Confirmed ADR 6 model (partners behind main backend) is correct. Identified 3 prep items for AI API side |
+
+### ✅ Completed (this session — 2026-07-17)
+
+| Area | Details |
+|---|---|
+| **18 endpoint markdown docs** | `docs/endpoints/` — one `.md` per endpoint (13 built + 5 planned). Each with purpose, auth, full request/response JSON, field tables, safety rules, status codes, and code examples in 6 languages (cURL, JS fetch, Python, Node.js axios, Go, PHP) |
+| **SaaS readiness audit** | Reviewed codebase against Phase 8 requirements. Confirmed partners go through main backend (ADR 6). Identified 3 prep items for AI API side |
+
+### 🧠 Architecture notes
+
+- `ConversationOrchestrator` is instantiated in `app/main.py:75` and stored in `app.state.orchestrator`. Every route retrieves it via `_orch(request)` and calls specific `run_*` methods directly.
+- `IntentClassifier` and `ConversationOrchestrator.classify_intent()` are **dead code in production** — fully tested but NOT wired to any route. Designed for a future `/v1/ai/chat` endpoint that was planned but never created.
+- **No `/v1/ai/chat` endpoint exists.** Frontend calls individual workflow endpoints directly.
+- Routes live at `app/api/routes/` and are prefixed `/v1` via `app/main.py`
+- Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
+- 0 TODO/FIXME/HACK/XXX comments in codebase
+- `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
+- Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
+- **SaaS model**: Partners go through main backend (ADR 6). Zam AI stays internal, called by backend with a single internal key. Backend handles partner auth, billing, dev portal.
+
+### ❌ Remaining Gaps
 
 | Area | Details |
 |---|---|
@@ -42,8 +68,24 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - 0 TODO/FIXME/HACK/XXX comments in codebase
 - `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
 - Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
+- **SaaS model**: Partners go through main backend (ADR 6). Zam AI stays internal, called by backend with a single internal key. Backend handles partner auth, billing, dev portal.
 
 ### ❌ Remaining Gaps
+
+| Priority | Area | What to do |
+|---|---|---|
+| **HIGH** | Pass `organization_id` through to audit traces | `actor_context.organization_id` exists in request schema but audit writer doesn't log it. Backend needs this to bill partners. One-line fix in orchestrator to pass org_id into audit metadata |
+| **HIGH** | Persist audit traces to database | Currently in-memory `OrderedDict` (gone on restart). Backend needs to query usage per org/date for billing. Add `audit_traces` table + query endpoint filtered by org/date range |
+| **HIGH** | Add `X-Caller-Organization` header passthrough | Let backend tag which partner/org each request is for. Flows into audit logs for usage-based billing |
+| **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` — need OCR provider, worker queue, schema, routes |
+| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — medication review, patient summary, interaction/contraindication review, patient education draft. Intent classifier has `DOCTOR_ASSIST` pattern (returns placeholder) |
+| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — drug explanation, interaction review, alternative review, inventory contextualization. Intent classifier has `PHARMACY_ASSIST` pattern (returns placeholder) |
+| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — route, prompt, orchestrator. Intent classifier has `REMINDERS` pattern (returns placeholder) |
+| **LOW** | 13 prompt templates not created | `medication_schedule.md`, `health_guidance.md`, 3 pharmacy workflow prompts, 3 doctor workflow prompts, 3 JSON response schemas, `examples/` directory |
+| **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` (9 directories) and `app/integrations/*` (5 directories) — all just `__init__.py` |
+| **LOW** | `tests/__init__.py` | Add package init |
+| **LOW** | `test_admin_api.py` | Source file missing (only `__pycache__` remains) |
+| **LOW** | Type checking | No mypy/pyright in dev deps or config |
 
 | Priority | Area | What to do |
 |---|---|---|
