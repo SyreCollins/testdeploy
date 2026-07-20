@@ -19,6 +19,7 @@ from app.core.logging import configure_logging
 from app.core.middleware.api_key import InternalApiKeyMiddleware
 from app.core.middleware.rate_limit import RateLimitMiddleware
 from app.core.middleware.request_id import RequestIdMiddleware
+from app.core.middleware.request_logger import RequestLoggingMiddleware
 from app.rag.embeddings import get_embedding_provider
 from app.rag.registry import RagRegistry
 from app.rag.service import RetrievalService
@@ -41,6 +42,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.state.settings = settings
     app.state.logger = logging.getLogger(settings.service_name)
+
+    app.state.logger.info(
+        "app_starting",
+        extra={
+            "environment": settings.environment,
+            "embedding_provider": settings.embedding_provider or "auto-detect",
+            "vector_store": settings.vector_store or "auto-detect",
+            "model_provider": settings.model_provider or "auto-detect",
+            "database_url": settings.database_url,
+            "has_pinecone_key": bool(settings.pinecone_api_key),
+            "has_jina_key": bool(settings.jina_api_key),
+            "has_claude_key": bool(settings.claude_api_key),
+            "has_voyage_key": bool(settings.voyage_api_key),
+        },
+    )
 
     if settings.internal_api_keys_list:
         api_key_store.bootstrap_static_keys(settings.internal_api_keys_list)
@@ -87,6 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(InternalApiKeyMiddleware, settings=settings)
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
 
     app.include_router(health_router, prefix="/v1", tags=["system"])
     app.include_router(retrieval_router, prefix="/v1", tags=["retrieval"])
