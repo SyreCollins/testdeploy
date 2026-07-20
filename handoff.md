@@ -7,6 +7,25 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ## State (~221 tests pass, 0 lint errors, CI/CD active)
 
+### ✅ Completed (this session — 2026-07-20)
+
+| Area | Details |
+|---|---|
+| **Detailed request logging** | New `RequestLoggingMiddleware` logs full request body, headers, response body, latency for every request |
+| **Startup env audit log** | `main.py` now logs which env vars are present at startup |
+| **Fixed Dockerfile** | Added `COPY prompts ./prompts` — prompts were missing in Docker image |
+| **Cleaner claim formatting** | `CitationEngine._clean_claim()` normalizes newlines/whitespace in claim text |
+| **Conversational tone** | Updated `system.md` and `medication_info.md` prompts to be warm, empathetic, natural |
+| **Follow-up questions** | `_extract_follow_up_questions()` parses model response, strips from answer text, populates `follow_up_questions` field |
+
+### ❌ Remaining for next session
+
+| Priority | Area | What to do |
+|---|---|---|
+| **MEDIUM** | Citation metadata null | `source_name`, `document_title`, `source_version` are null in responses — check ingestion/retrieval pipeline |
+| **MEDIUM** | Low confidence scores | `overall: 0.30`, `grounding: 0.20` — scoring logic may need tuning |
+| **MEDIUM** | Database setup | Replace SQLite with PostgreSQL/Supabase for Render persistence |
+
 ### ✅ Completed (this session — 2026-07-17)
 
 | Area | Details |
