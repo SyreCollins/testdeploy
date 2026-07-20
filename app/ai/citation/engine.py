@@ -49,10 +49,15 @@ class CitationEngine:
     def truncate(self, citations: list[Citation], max_count: int = MAX_CITATIONS) -> list[Citation]:
         return citations[:max_count]
 
+    @staticmethod
+    def _clean_claim(text: str) -> str:
+        cleaned = text.replace("\n- ", " - ").replace("\n", " ")
+        return " ".join(cleaned.split())[:200]
+
     def build_claims(self, citations: list[Citation], max_claims: int = MAX_CITATIONS) -> list[dict]:
         return [
             {
-                "claim": c.text_content[:200],
+                "claim": self._clean_claim(c.text_content),
                 "citation_ids": [c.citation_id],
             }
             for c in citations[:max_claims]
