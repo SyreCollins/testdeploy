@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -163,6 +164,18 @@ class ConversationOrchestrator:
     def _parse_json_from_response(text: str) -> dict | None:
         return parse_response(text)
 
+    @staticmethod
+    def _extract_follow_up_questions(text: str) -> list[str]:
+        match = re.search(r"## Follow-up Questions\n(.+?)(?:\n##|\Z)", text, re.DOTALL)
+        if not match:
+            return []
+        questions = []
+        for line in match.group(1).strip().split("\n"):
+            line = line.strip().lstrip("- *").rstrip(" *")
+            if line:
+                questions.append(line)
+        return questions
+
     def _model_unavailable_result(self, workflow: str, req_id: str) -> WorkflowResult:
         return WorkflowResult(
             success=False,
@@ -253,6 +266,11 @@ class ConversationOrchestrator:
 
         model_claims = self.citations.build_claims(citation_objs)
 
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
         prompt_version = self.prompt_mgr.get_workflow_version("medical_qa")
         self.audit.end_trace(req_id, {
             "outcome": "success",
@@ -261,7 +279,7 @@ class ConversationOrchestrator:
 
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="medical_qa",
             citations=citations[:5],
             safety_metadata={
@@ -280,7 +298,7 @@ class ConversationOrchestrator:
             structured_result={
                 "medical_claims": model_claims[:5],
                 "missing_context": [],
-                "follow_up_questions": [],
+                "follow_up_questions": follow_up_questions,
             },
         )
 
