@@ -43,13 +43,31 @@ Check whether the supplied medications are contraindicated for the provided pati
 
 ## OUTPUT FORMAT
 
-Return ONLY valid TOON format — no markdown, no extra text, no JSON:
+Return ONLY valid JSON — no markdown, no extra text:
 
-```toon
-contraindications[1]{medication,condition,severity,reason,evidence_summary,citation_ids}:
-  drug name,contraindicated condition,contraindicated,brief patient-friendly explanation,summary of supporting evidence,c1,c2
-missing_context[1]: list of missing patient info needed
-unknowns[1]: medications that could not be evaluated
+```json
+{
+  "contraindications": [
+    {
+      "medication": "drug name",
+      "condition": "contraindicated condition",
+      "severity": "contraindicated",
+      "reason": "brief patient-friendly explanation",
+      "evidence_summary": "summary of supporting evidence",
+      "citation_ids": ["c1", "c2"]
+    }
+  ],
+  "missing_context": ["list of missing patient info needed"],
+  "unknowns": ["medications that could not be evaluated"]
+}
 ```
 
-If no contraindications are found, set contraindications to an empty array: `contraindications[0]:` with no rows. If a medication has no known contraindications, include it with severity "no_contraindication".
+If no contraindications are found, set contraindications to an empty array. If a medication has no known contraindications, include it with severity "no_contraindication".
+
+After your response, if there are relevant follow-up questions the user might want to ask, include them in a section like this:
+
+## Follow-up Questions
+- Are there alternative medications I can take?
+- What symptoms of a reaction should I watch for?
+
+Only include this section if you have meaningful follow-up questions. Keep questions brief and natural.

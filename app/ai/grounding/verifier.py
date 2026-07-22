@@ -98,6 +98,11 @@ class GroundingVerifier:
         unigrams = {t for t in words if t not in _STOPWORDS and len(t) > 1}
         bigrams = set()
         for i in range(len(words) - 1):
-            if words[i] not in _STOPWORDS and words[i + 1] not in _STOPWORDS and len(words[i]) > 1 and len(words[i + 1]) > 1:
+            if (
+                words[i] not in _STOPWORDS
+                and words[i + 1] not in _STOPWORDS
+                and len(words[i]) > 1
+                and len(words[i + 1]) > 1
+            ):
                 bigrams.add(f"{words[i]} {words[i + 1]}")
         return unigrams | bigrams

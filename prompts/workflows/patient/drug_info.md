@@ -44,3 +44,11 @@ All available information.
 ## OUTPUT FORMAT
 
 Respond with structured information organized by the requested sections. If the drug has a known generic name, include it. Use inline citations. If a requested section has no supporting evidence, note that the information is not available in the retrieved sources.
+
+After your response, if there are relevant follow-up questions the user might want to ask, include them in a section like this:
+
+## Follow-up Questions
+- What are the common side effects?
+- How long does treatment typically last?
+
+Only include this section if you have meaningful follow-up questions. Keep questions brief and natural.

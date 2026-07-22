@@ -5,7 +5,14 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-## State (~221 tests pass, 0 lint errors, CI/CD active)
+## State (~222 tests pass, 0 lint errors, CI/CD active)
+
+### ✅ Completed (this session — 2026-07-22)
+
+| Area | Details |
+|---|---|
+| **Follow-up questions extended to all workflows** | `drug_info`, `symptom_guidance`, `interaction_check`, `contraindication_check`, `dosage_verify`, `prescription_explain` — each prompt template now instructs LLM to optionally include `## Follow-up Questions`; orchestrator extracts, strips from answer, adds to `structured_result`; composer passes to response; TS types synced |
+| **Fixed broken TOON output prompts** | `contraindication_checker.md` and `dosage_verifier.md` instructed LLM to output TOON format, but the `toon-format` library decoder is a stub (`NotImplementedError`). Changed to JSON output format — `_parse_json_from_response` already handles JSON |
 
 ### ✅ Completed (this session — 2026-07-21)
 
@@ -48,6 +55,10 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Parallel multi-drug retrieval** | `asyncio.gather()` in interaction + contraindication checks |
 | **N+1 query eliminated** | `get_chunk_metadata_batch()` with single batch query |
 | **LLM timeout + retry** | Configurable timeout + retry in `_call_model()` |
+
+### 🧠 Architecture notes / Tips
+
+- **Intent classifier improvement:** Current regex-based classifier (`app/ai/orchestrator/intent_classifier.py`) misses common queries like "Can I take ibuprofen?" or "What is amoxicillin?" because drug names aren't in the patterns. Consider switching to a small LLM call (Claude Haiku / Gemini Flash) for classification — tiny prompt, single-token output, ~200ms latency, understands any phrasing naturally.
 
 ### 🧠 Architecture notes
 

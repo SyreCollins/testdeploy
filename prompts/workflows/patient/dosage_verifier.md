@@ -44,12 +44,30 @@ Verify whether the supplied medication dosage is appropriate for the patient usi
 
 ## OUTPUT FORMAT
 
-Return ONLY valid TOON format — no markdown, no extra text, no JSON:
+Return ONLY valid JSON — no markdown, no extra text:
 
-```toon
-dosages[1]{medication_name,stated_dosage,assessment,typical_range,flags,citation_ids}:
-  drug name,dosage as prescribed,verified,typical range from evidence,above_range,c1
-missing_context[1]: list of missing patient info needed
+```json
+{
+  "dosages": [
+    {
+      "medication_name": "drug name",
+      "stated_dosage": "dosage as prescribed",
+      "assessment": "verified",
+      "typical_range": "typical range from evidence",
+      "flags": ["above_range"],
+      "citation_ids": ["c1"]
+    }
+  ],
+  "missing_context": ["list of missing patient info needed"]
+}
 ```
 
-If the dosage is within the typical range, set assessment to "verified". If missing critical context like weight or renal function, include relevant flags and list them in missing_context. For flags, use a comma-separated list in the flags field.
+If the dosage is within the typical range, set assessment to "verified". If missing critical context like weight or renal function, include relevant flags and list them in missing_context.
+
+After your response, if there are relevant follow-up questions the user might want to ask, include them in a section like this:
+
+## Follow-up Questions
+- Should I take this with food?
+- What should I do if I miss a dose?
+
+Only include this section if you have meaningful follow-up questions. Keep questions brief and natural.

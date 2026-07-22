@@ -1,7 +1,6 @@
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy.orm import selectinload
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import get_settings

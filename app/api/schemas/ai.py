@@ -145,6 +145,7 @@ class InteractionResult(BaseModel):
 class InteractionCheckResult(BaseModel):
     interactions: list[InteractionResult] = Field(default_factory=list)
     unknowns: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class InteractionCheckResponse(BaseModel):
@@ -182,6 +183,7 @@ class NormalizedDrug(BaseModel):
 class DrugInfoResult(BaseModel):
     normalized_drug: NormalizedDrug
     sections: dict[str, str] = Field(default_factory=dict)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class DrugInfoResponse(BaseModel):
@@ -199,6 +201,7 @@ class SymptomGuidanceResult(BaseModel):
     answer: str
     triage_level: str = "non_urgent"
     diagnosis_provided: bool = False
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class SymptomGuidanceResponse(BaseModel):
@@ -254,6 +257,7 @@ class ContraindicationCheckResult(BaseModel):
     contraindications: list[ContraindicationItem] = Field(default_factory=list)
     missing_context: list[str] = Field(default_factory=list)
     unknowns: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class ContraindicationCheckResponse(BaseModel):
@@ -299,6 +303,7 @@ class DosageResult(BaseModel):
 class DosageVerifyResult(BaseModel):
     dosages: list[DosageResult] = Field(default_factory=list)
     missing_context: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class DosageVerifyResponse(BaseModel):
@@ -336,6 +341,7 @@ class PrescriptionExplainResult(BaseModel):
     summary: str
     sections: list[PrescriptionSection] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    follow_up_questions: list[str] = Field(default_factory=list)
 
 
 class PrescriptionExplainResponse(BaseModel):

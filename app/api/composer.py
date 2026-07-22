@@ -167,6 +167,7 @@ class ResponseComposer:
                     for ix in (structured.get("interactions") or [])
                 ],
                 unknowns=structured.get("unknowns") or [],
+                follow_up_questions=structured.get("follow_up_questions") or [],
             ),
             safety=self._safety(result, {"risk_level": "medium"}),
             citations=self._citations(result),
@@ -195,6 +196,7 @@ class ResponseComposer:
                     ),
                 ),
                 sections=structured.get("sections") or {"information": result.response_text},
+                follow_up_questions=structured.get("follow_up_questions") or [],
             ),
             safety=self._safety(result, {"risk_level": "low"}),
             citations=self._citations(result),
@@ -220,6 +222,7 @@ class ResponseComposer:
                 answer=result.response_text,
                 triage_level=structured.get("triage_level", "non_urgent"),
                 diagnosis_provided=structured.get("diagnosis_provided", False),
+                follow_up_questions=structured.get("follow_up_questions") or [],
             ),
             safety=self._safety(result),
             citations=self._citations(result),
@@ -255,6 +258,7 @@ class ResponseComposer:
                 ],
                 missing_context=structured.get("missing_context") or [],
                 unknowns=structured.get("unknowns") or [],
+                follow_up_questions=structured.get("follow_up_questions") or [],
             ),
             safety=self._safety(result, {"risk_level": "medium"}),
             citations=self._citations(result),
@@ -289,6 +293,7 @@ class ResponseComposer:
                     for d in (structured.get("dosages") or [])
                 ],
                 missing_context=structured.get("missing_context") or [],
+                follow_up_questions=structured.get("follow_up_questions") or [],
             ),
             safety=self._safety(result, {"risk_level": "low"}),
             citations=self._citations(result),
@@ -346,6 +351,7 @@ class ResponseComposer:
                     for s in (structured.get("sections") or [])
                 ],
                 warnings=structured.get("warnings", []),
+                follow_up_questions=structured.get("follow_up_questions") or [],
             ),
             safety=self._safety(result, {"risk_level": "low"}),
             citations=self._citations(result),

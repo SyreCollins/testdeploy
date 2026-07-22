@@ -50,4 +50,12 @@ sections[1]{title,content,citation_ids}:
 warnings[1]: list of important warnings based on evidence
 ```
 
-Include sections relevant to the prescription such as medication purpose, how to take it, common side effects, and important warnings. Set warnings to an empty list if none are identified (`warnings[0]:` with no items).
+Include sections relevant to the prescription such as medication purpose, how to take it, common side effects, and important warnings. Set warnings to an empty list if none are identified.
+
+After your response, if there are relevant follow-up questions the user might want to ask, include them in a section like this:
+
+## Follow-up Questions
+- What should I do if I miss a dose?
+- Are there any foods I should avoid?
+
+Only include this section if you have meaningful follow-up questions. Keep questions brief and natural.

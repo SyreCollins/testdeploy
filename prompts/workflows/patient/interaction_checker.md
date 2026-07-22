@@ -46,6 +46,14 @@ Check for potential drug interactions between the listed medications.
 
 For each interaction found, list the medication pair, severity (major / moderate / minor), a brief summary, and a recommended action. If a medication has no known interactions with the others, state that. List any medications that could not be identified in unknowns.
 
+After your response, if there are relevant follow-up questions the user might want to ask, include them in a section like this:
+
+## Follow-up Questions
+- Are there any foods I should avoid with these medications?
+- What symptoms of an interaction should I watch for?
+
+Only include this section if you have meaningful follow-up questions. Keep questions brief and natural.
+
 ## DISCLAIMER
 
 Always include the following disclaimer at the end of your response: "This information is for educational purposes only. Always consult your doctor or pharmacist before starting, stopping, or changing any medication."

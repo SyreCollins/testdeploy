@@ -153,6 +153,7 @@ export interface SymptomGuidanceResult {
   answer: string;
   triage_level: string;
   diagnosis_provided: boolean;
+  follow_up_questions: string[];
 }
 
 export interface SymptomGuidanceResponse {
@@ -200,6 +201,7 @@ export interface InteractionResult {
 export interface InteractionCheckResult {
   interactions: InteractionResult[];
   unknowns: string[];
+  follow_up_questions: string[];
 }
 
 export interface InteractionCheckResponse {
@@ -241,6 +243,7 @@ export interface NormalizedDrug {
 export interface DrugInfoResult {
   normalized_drug: NormalizedDrug;
   sections: Record<string, string>;
+  follow_up_questions: string[];
 }
 
 export interface DrugInfoResponse {
@@ -289,6 +292,7 @@ export interface ContraindicationCheckResult {
   contraindications: ContraindicationItem[];
   missing_context: string[];
   unknowns: string[];
+  follow_up_questions: string[];
 }
 
 export interface ContraindicationCheckResponse {
@@ -338,6 +342,7 @@ export interface DosageResult {
 export interface DosageVerifyResult {
   dosages: DosageResult[];
   missing_context: string[];
+  follow_up_questions: string[];
 }
 
 export interface DosageVerifyResponse {
@@ -379,6 +384,7 @@ export interface PrescriptionExplainResult {
   summary: string;
   sections: PrescriptionSection[];
   warnings: string[];
+  follow_up_questions: string[];
 }
 
 export interface PrescriptionExplainResponse {

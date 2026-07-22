@@ -367,9 +367,14 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("symptom_guidance")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="symptom_guidance",
             safety_metadata={
                 "risk_level": block.risk_level.value if block else "low",
@@ -384,6 +389,7 @@ class ConversationOrchestrator:
             structured_result={
                 "triage_level": "non_urgent",
                 "diagnosis_provided": False,
+                "follow_up_questions": follow_up_questions,
             },
         )
 
@@ -447,9 +453,14 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("drug_info")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="drug_info",
             citations=citations[:5],
             safety_metadata={"risk_level": "low", "action": "answered"},
@@ -464,7 +475,8 @@ class ConversationOrchestrator:
                 "normalized_drug": {
                     "input_name": drug_name,
                 },
-                "sections": {"information": response.text},
+                "sections": {"information": answer_text},
+                "follow_up_questions": follow_up_questions,
             },
         )
 
@@ -542,9 +554,14 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("interaction_check")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="interaction_check",
             citations=citations[:5],
             safety_metadata={"risk_level": "medium", "action": "answered"},
@@ -560,11 +577,12 @@ class ConversationOrchestrator:
                     {
                         "medications": drug_names,
                         "severity": "unknown",
-                        "summary": response.text,
+                        "summary": answer_text,
                         "citation_ids": [c["citation_id"] for c in citations[:5]],
                     }
                 ],
                 "unknowns": [],
+                "follow_up_questions": follow_up_questions,
             },
         )
 
@@ -647,9 +665,14 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("contraindication_check")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="contraindication_check",
             citations=citations[:5],
             safety_metadata={"risk_level": "medium", "action": "answered"},
@@ -664,6 +687,7 @@ class ConversationOrchestrator:
                 "contraindications": ci,
                 "missing_context": parsed.get("missing_context") or [],
                 "unknowns": parsed.get("unknowns") or [],
+                "follow_up_questions": follow_up_questions,
             },
         )
 
@@ -737,9 +761,14 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("dosage_verify")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="dosage_verify",
             citations=citations[:5],
             safety_metadata={"risk_level": "low", "action": "answered"},
@@ -753,6 +782,7 @@ class ConversationOrchestrator:
             structured_result={
                 "dosages": dosages,
                 "missing_context": parsed.get("missing_context") or [],
+                "follow_up_questions": follow_up_questions,
             },
         )
 
@@ -819,7 +849,12 @@ class ConversationOrchestrator:
         prompt_version = self.prompt_mgr.get_workflow_version("prescription_explain")
         self.audit.end_trace(req_id, {"outcome": "success"})
 
-        parsed = self._parse_json_from_response(response.text) or {}
+        follow_up_questions = self._extract_follow_up_questions(response.text)
+        answer_text = response.text
+        if follow_up_questions:
+            answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
+
+        parsed = self._parse_json_from_response(answer_text) or {}
         sections = parsed.get("sections") or []
         for i, s in enumerate(sections):
             if not s.get("citation_ids") and i < len(citations):
@@ -827,7 +862,7 @@ class ConversationOrchestrator:
 
         return WorkflowResult(
             success=True,
-            response_text=response.text,
+            response_text=answer_text,
             workflow="prescription_explain",
             citations=citations[:5],
             safety_metadata={"risk_level": "low", "action": "answered"},
@@ -839,9 +874,10 @@ class ConversationOrchestrator:
                 "model_version": response.model,
             },
             structured_result={
-                "summary": parsed.get("summary") or response.text[:500],
+                "summary": parsed.get("summary") or answer_text[:500],
                 "sections": sections,
                 "warnings": parsed.get("warnings") or [],
+                "follow_up_questions": follow_up_questions,
             },
         )
 
