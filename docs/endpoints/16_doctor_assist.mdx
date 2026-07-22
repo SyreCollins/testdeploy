@@ -1,0 +1,237 @@
+---
+title: Doctor Assistant
+description: AI-assisted clinical support for clinician-facing workflows
+icon: stethoscope
+---
+
+<Note>
+  **Status: Planned** — This endpoint is not yet implemented.
+</Note>
+
+## Overview
+
+Provides AI-assisted clinical support for doctors including medication review, patient summaries, interaction review, and patient education drafts. Responses distinguish between source-backed facts, patient-supplied context, and AI-generated synthesis.
+
+## Authentication
+
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide for details.
+
+## Common Request Fields
+
+Every AI endpoint accepts a standard set of top-level fields for request tracing, caller identification, actor context, authorization, and locale. See the [Common Request Structure](/docs/guides/common-request-structure) guide for details.
+
+---
+
+## Doctor Assist
+
+`POST /v1/ai/doctor/assist`
+
+### When to Use
+
+Invoke this endpoint when a clinician needs AI support for clinical tasks such as reviewing medications, generating patient summaries, checking interactions or contraindications, or drafting patient education materials.
+
+### Request Body
+
+```json
+{
+  "input": {
+    "task_type": "medication_review",
+    "patient_context": {
+      "age": 68,
+      "sex": "male",
+      "known_conditions": ["atrial fibrillation", "hypertension"],
+      "allergies": [],
+      "current_medications": ["warfarin", "lisinopril", "atorvastatin"]
+    },
+    "task_params": {}
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.task_type` | string | Yes | Type of assistant task |
+| `input.patient_context` | object | Yes | Patient medical context |
+| `input.task_params` | object | No | Task-specific parameters |
+
+### Supported Task Types
+
+| Task Type | Description |
+|-----------|-------------|
+| `medication_review` | Review current medications for issues |
+| `patient_summary` | Generate a concise patient summary |
+| `interaction_review` | Review all medications for interactions |
+| `contraindication_review` | Review all medications for contraindications |
+| `patient_education_draft` | Draft patient education materials |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/ai/doctor/assist \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <your-api-key>" \
+  -d '{
+    "actor_context": {
+      "actor_type": "doctor",
+      "actor_id": "dr-789",
+      "role": "clinician"
+    },
+    "input": {
+      "task_type": "medication_review",
+      "patient_context": {
+        "age": 68,
+        "known_conditions": ["atrial fibrillation", "hypertension"],
+        "current_medications": ["warfarin", "lisinopril", "atorvastatin"]
+      }
+    }
+  }'
+```
+
+### Response
+
+`200 OK`
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "doctor_assist",
+  "result": {
+    "task_type": "medication_review",
+    "summary": "Patient is on 3 medications. Warfarin and ibuprofen have a major interaction. Consider alternative analgesia.",
+    "findings": [
+      {
+        "type": "interaction",
+        "severity": "major",
+        "description": "Warfarin and ibuprofen combination increases bleeding risk.",
+        "citation_ids": ["cit_1"]
+      }
+    ],
+    "recommendations": [
+      "Consider paracetamol as alternative to ibuprofen",
+      "Monitor INR if warfarin is continued"
+    ]
+  },
+  "safety": {
+    "risk_level": "medium",
+    "action": "answered",
+    "requires_escalation": false,
+    "requires_human_review": false
+  },
+  "citations": [],
+  "confidence": {
+    "overall": 0.85,
+    "grounding": 0.88,
+    "retrieval": 0.82
+  },
+  "audit": {
+    "trace_id": "ai-trace-707",
+    "prompt_version": "doctor_assist:v1",
+    "model_provider": "provider-name",
+    "model_version": "model-version"
+  }
+}
+```
+
+---
+
+## Safety Rules
+
+- Distinguishes source-backed facts, patient-supplied context, and AI-generated synthesis
+- All clinical claims require source evidence
+- Does not replace clinical judgment
+
+---
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Assistant response generated |
+| `400` | Validation error |
+| `401` | Missing or invalid API key |
+| `422` | Invalid request body |
+| `500` | Internal service error |
+
+<Warning>
+  This tool is a clinical decision support aid, not a substitute for professional
+  medical judgment. All recommendations should be reviewed by a qualified clinician.
+</Warning>
+
+<Tip>
+  For best results, provide as much patient context as possible. Include allergies,
+  known conditions, and current medications to improve the accuracy of findings and
+  recommendations.
+</Tip>
+
+---
+
+## More Examples
+
+### JavaScript (fetch)
+
+```javascript
+const response = await fetch('http://localhost:8000/v1/ai/doctor/assist', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Zam-AI-Key': '<your-api-key>'
+  },
+  body: JSON.stringify({
+    actor_context: {
+      actor_type: 'doctor',
+      actor_id: 'dr-789',
+      role: 'clinician'
+    },
+    input: {
+      task_type: 'medication_review',
+      patient_context: {
+        age: 68,
+        known_conditions: ['atrial fibrillation', 'hypertension'],
+        current_medications: ['warfarin', 'lisinopril', 'atorvastatin']
+      }
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Python (requests)
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/v1/ai/doctor/assist",
+    headers={
+        "Content-Type": "application/json",
+        "X-Zam-AI-Key": "<your-api-key>"
+    },
+    json={
+        "actor_context": {
+            "actor_type": "doctor",
+            "actor_id": "dr-789",
+            "role": "clinician"
+        },
+        "input": {
+            "task_type": "medication_review",
+            "patient_context": {
+                "age": 68,
+                "known_conditions": ["atrial fibrillation", "hypertension"],
+                "current_medications": ["warfarin", "lisinopril", "atorvastatin"]
+            }
+        }
+    }
+)
+
+print(response.json())
+```
+
+## Related Endpoints
+
+- [Pharmacy Assist](/docs/endpoints/17_pharmacy_assist) — pharmacy-facing medication intelligence
+- [Common Request Structure](/docs/guides/common-request-structure) — shared request fields
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how Zam AI provides clinical decision support
+- [Security & Compliance](/docs/07_SECURITY_AND_COMPLIANCE) — medical safety requirements for clinician tools

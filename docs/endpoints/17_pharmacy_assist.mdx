@@ -1,0 +1,236 @@
+---
+title: Pharmacy Assistant
+description: AI-assisted medication intelligence for pharmacy-facing workflows
+icon: pill
+---
+
+<Note>
+  **Status: Planned** — This endpoint is not yet implemented.
+</Note>
+
+## Overview
+
+Provides AI-assisted support for pharmacists including drug explanations, interaction reviews, alternative recommendations, and inventory contextualization.
+
+## Authentication
+
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide for details.
+
+## Common Request Fields
+
+Every AI endpoint accepts a standard set of top-level fields for request tracing, caller identification, actor context, authorization, and locale. See the [Common Request Structure](/docs/guides/common-request-structure) guide for details.
+
+---
+
+## Pharmacy Assist
+
+`POST /v1/ai/pharmacy/assist`
+
+### When to Use
+
+Invoke this endpoint when a pharmacist needs AI support for counseling patients on medications, checking interactions, finding therapeutic alternatives, or contextualizing inventory availability.
+
+### Request Body
+
+```json
+{
+  "input": {
+    "task_type": "drug_explanation",
+    "medication_name": "Augmentin",
+    "patient_context": {
+      "age": 35,
+      "known_conditions": [],
+      "allergies": ["penicillin"]
+    },
+    "task_params": {}
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.task_type` | string | Yes | Type of pharmacy task |
+| `input.medication_name` | string | No | Medication name (if applicable) |
+| `input.patient_context` | object | No | Patient context |
+| `input.task_params` | object | No | Task-specific parameters |
+
+### Supported Task Types
+
+| Task Type | Description |
+|-----------|-------------|
+| `drug_explanation` | Explain a medication to a patient |
+| `interaction_review` | Review all medications for interactions |
+| `alternative_review` | Suggest therapeutic alternatives |
+| `inventory_contextualization` | Contextualize inventory availability |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/ai/pharmacy/assist \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <your-api-key>" \
+  -d '{
+    "actor_context": {
+      "actor_type": "pharmacy",
+      "actor_id": "pharm-202",
+      "role": "pharmacist"
+    },
+    "input": {
+      "task_type": "drug_explanation",
+      "medication_name": "Augmentin",
+      "patient_context": {
+        "age": 35,
+        "allergies": ["penicillin"]
+      }
+    }
+  }'
+```
+
+### Response
+
+`200 OK`
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "pharmacy_assist",
+  "result": {
+    "task_type": "drug_explanation",
+    "summary": "Augmentin (amoxicillin/clavulanate) is a broad-spectrum antibiotic. Patient has listed penicillin allergy — verify before dispensing.",
+    "findings": [
+      {
+        "type": "allergy_warning",
+        "severity": "high",
+        "description": "Patient has listed penicillin allergy. Augmentin contains amoxicillin (a penicillin).",
+        "citation_ids": ["cit_1"]
+      }
+    ],
+    "recommendations": [
+      "Verify allergy status with patient before dispensing",
+      "Consider alternative antibiotic if allergy is confirmed"
+    ]
+  },
+  "safety": {
+    "risk_level": "medium",
+    "action": "answered",
+    "requires_escalation": false,
+    "requires_human_review": false
+  },
+  "citations": [],
+  "confidence": {
+    "overall": 0.85,
+    "grounding": 0.88,
+    "retrieval": 0.82
+  },
+  "audit": {
+    "trace_id": "ai-trace-808",
+    "prompt_version": "pharmacy_assist:v1",
+    "model_provider": "provider-name",
+    "model_version": "model-version"
+  }
+}
+```
+
+---
+
+## Safety Rules
+
+- Inventory availability is not clinical equivalence
+- Alternative recommendations require source-backed clinical rationale
+- Pharmacist review metadata is returned for substitution workflows
+
+---
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Assistant response generated |
+| `400` | Validation error |
+| `401` | Missing or invalid API key |
+| `422` | Invalid request body |
+| `500` | Internal service error |
+
+<Warning>
+  All pharmacy AI outputs should be reviewed by a licensed pharmacist before acting on
+  recommendations, especially when allergies or interactions are flagged.
+</Warning>
+
+<Tip>
+  For `alternative_review` tasks, include inventory data in `task_params` to get
+  recommendations contextualized to available stock.
+</Tip>
+
+---
+
+## More Examples
+
+### JavaScript (fetch)
+
+```javascript
+const response = await fetch('http://localhost:8000/v1/ai/pharmacy/assist', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Zam-AI-Key': '<your-api-key>'
+  },
+  body: JSON.stringify({
+    actor_context: {
+      actor_type: 'pharmacy',
+      actor_id: 'pharm-202',
+      role: 'pharmacist'
+    },
+    input: {
+      task_type: 'drug_explanation',
+      medication_name: 'Augmentin',
+      patient_context: {
+        age: 35,
+        allergies: ['penicillin']
+      }
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Python (requests)
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/v1/ai/pharmacy/assist",
+    headers={
+        "Content-Type": "application/json",
+        "X-Zam-AI-Key": "<your-api-key>"
+    },
+    json={
+        "actor_context": {
+            "actor_type": "pharmacy",
+            "actor_id": "pharm-202",
+            "role": "pharmacist"
+        },
+        "input": {
+            "task_type": "drug_explanation",
+            "medication_name": "Augmentin",
+            "patient_context": {
+                "age": 35,
+                "allergies": ["penicillin"]
+            }
+        }
+    }
+)
+
+print(response.json())
+```
+
+## Related Endpoints
+
+- [Doctor Assist](/docs/endpoints/16_doctor_assist) — clinical decision support
+- [Prescription OCR](/docs/endpoints/14_prescription_ocr) — structured prescription data extraction
+- [Common Request Structure](/docs/guides/common-request-structure) — shared request fields
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how Zam AI provides pharmacy medication intelligence
+- [Security & Compliance](/docs/07_SECURITY_AND_COMPLIANCE) — medical safety in pharmacy workflows

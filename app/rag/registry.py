@@ -169,26 +169,23 @@ class RagRegistry:
 
         with Session(self.engine) as session:
             statement = (
-                select(DocumentChunk)
+                select(DocumentChunk, SourceDocument, MedicalSource)
+                .join(SourceDocument, DocumentChunk.document_id == SourceDocument.id)
+                .join(MedicalSource, SourceDocument.source_id == MedicalSource.id)
                 .where(DocumentChunk.id.in_(chunk_ids))
-                .options(
-                    selectinload(DocumentChunk.document).selectinload(SourceDocument.source)
-                )
             )
-            chunks = session.exec(statement).all()
+            rows = session.exec(statement).all()
             result: dict[str, dict] = {}
-            for chunk in chunks:
-                doc = chunk.document
-                source = doc.source if doc else None
+            for chunk, doc, source in rows:
                 result[chunk.id] = {
                     "chunk_id": chunk.id,
                     "text_content": chunk.text_content,
                     "section_path": chunk.section_path,
                     "page_number": chunk.page_number,
-                    "document_title": doc.title if doc else None,
-                    "source_name": source.name if source else None,
-                    "source_version": source.version if source else None,
-                    "publisher": source.publisher if source else None,
-                    "jurisdiction": source.jurisdiction if source else None,
+                    "document_title": doc.title,
+                    "source_name": source.name,
+                    "source_version": source.version,
+                    "publisher": source.publisher,
+                    "jurisdiction": source.jurisdiction,
                 }
             return result

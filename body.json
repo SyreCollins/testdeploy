@@ -1,12 +1,116 @@
 {
-  "request_id": "test-curl-001",
-  "caller": { "service": "zamda-backend", "environment": "testing" },
-  "actor_context": { "actor_type": "patient", "actor_id": "p1", "role": "patient" },
-  "authorization_context": { "workflow": "medical_qa", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
-  "locale": { "language": "en", "country": "NG" },
-  "input": {
-    "question": "What is amoxicillin used for?",
-    "patient_context": { "age": 35, "sex": "female", "known_conditions": [], "allergies": [], "current_medications": [] },
-    "conversation_context": { "conversation_id": null, "recent_messages": [] }
+  "medical_qa": {
+    "request_id": "test-mqa-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p1", "role": "patient" },
+    "authorization_context": { "workflow": "medical_qa", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "question": "What is amoxicillin used for?",
+      "patient_context": { "age": 35, "sex": "female", "known_conditions": [], "allergies": [], "current_medications": [] },
+      "conversation_context": { "conversation_id": null, "recent_messages": [] }
+    }
+  },
+
+  "symptom_guidance": {
+    "request_id": "test-sg-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p2", "role": "patient" },
+    "authorization_context": { "workflow": "symptom_guidance", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "symptoms": "I have a headache and slight fever for 2 days",
+      "patient_context": { "age": 28, "sex": "male", "known_conditions": [], "allergies": [], "current_medications": [] }
+    }
+  },
+
+  "drug_info": {
+    "request_id": "test-di-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p3", "role": "patient" },
+    "authorization_context": { "workflow": "drug_info", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "drug_name": "Augmentin",
+      "requested_sections": ["uses", "dosage", "side_effects", "warnings"],
+      "country": "NG"
+    }
+  },
+
+  "interaction_check": {
+    "request_id": "test-ic-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p4", "role": "patient" },
+    "authorization_context": { "workflow": "interaction_check", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "medications": [
+        { "name": "warfarin", "dose": "5mg daily" },
+        { "name": "ibuprofen", "dose": "400mg as needed" }
+      ],
+      "patient_context": { "age": 60, "sex": "male", "known_conditions": ["atrial fibrillation"], "allergies": [], "current_medications": ["warfarin"] }
+    }
+  },
+
+  "contraindication_check": {
+    "request_id": "test-cc-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p5", "role": "patient" },
+    "authorization_context": { "workflow": "contraindication_check", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "medications": [{ "name": "ibuprofen" }],
+      "patient_context": { "age": 45, "sex": "female", "known_conditions": ["peptic ulcer disease", "GERD"], "allergies": ["aspirin"], "current_medications": ["omeprazole"] }
+    }
+  },
+
+  "dosage_verify": {
+    "request_id": "test-dv-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "doctor", "actor_id": "dr1", "role": "prescriber" },
+    "authorization_context": { "workflow": "dosage_verify", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "medication": { "name": "amoxicillin", "strength": "500mg", "instructions": "take one capsule three times daily for 7 days" },
+      "patient_context": { "age": 30, "sex": "female", "known_conditions": [], "allergies": [], "current_medications": [] }
+    }
+  },
+
+  "prescription_explain": {
+    "request_id": "test-pe-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p6", "role": "patient" },
+    "authorization_context": { "workflow": "prescription_explain", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "prescription_text": "Tab Augmentin 625mg — 1 tab twice daily for 5 days. Tab Omeprazole 20mg — 1 cap daily before breakfast for 14 days.",
+      "patient_context": { "age": 40, "sex": "male", "known_conditions": ["hypertension"], "allergies": [], "current_medications": ["lisinopril 10mg"] }
+    }
+  },
+
+  "chat": {
+    "request_id": "test-chat-001",
+    "caller": { "service": "zamda-backend", "environment": "testing" },
+    "actor_context": { "actor_type": "patient", "actor_id": "p7", "role": "patient" },
+    "authorization_context": { "workflow": "chat", "consent_flags": { "use_patient_context": true, "store_ai_trace": true }, "context_scope": [] },
+    "locale": { "language": "en", "country": "NG" },
+    "input": {
+      "message": "Can I take ibuprofen if I have stomach ulcers?",
+      "patient_context": { "age": 45, "sex": "female", "known_conditions": ["stomach ulcers"], "allergies": [], "current_medications": [] },
+      "conversation_context": { "conversation_id": null, "recent_messages": [] }
+    }
+  },
+
+  "retrieval_search": {
+    "query": "What is the dosage of amoxicillin for adults?",
+    "limit": 10,
+    "generic_name_filter": null,
+    "chunk_type_filter": "dosage",
+    "min_trust_tier": null
+  },
+
+  "create_api_key": {
+    "label": "test-integration-key",
+    "expires_at": null
   }
 }

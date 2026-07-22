@@ -1,18 +1,40 @@
-# Retrieval Search
+---
+title: Retrieval Search
+description: Search the medical knowledge corpus for relevant document chunks with source metadata
+icon: search
+---
+
+## Overview
+
+The Retrieval Search endpoint provides direct access to the RAG retrieval system. It returns ranked document chunks matching the query, with metadata including source name, section path, page number, and trust tier. This endpoint is primarily used for debugging, evaluation, and internal tooling.
+
+## Endpoint
 
 `POST /v1/retrieval/search`
 
-Searches the medical knowledge corpus for relevant document chunks.
-
-## Purpose
-
-Provides direct access to the RAG retrieval system. Returns ranked document chunks matching the query, with metadata including source, section, and trust tier. Primarily used for debugging, evaluation, and internal tooling.
-
 ## Authentication
 
-Requires a valid internal API key via the `X-Zam-AI-Key` header.
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide.
 
-## Request
+## When to Use
+
+- Debugging retrieval quality for a specific query
+- Evaluating relevance scores and source coverage
+- Building internal tooling that needs raw access to the knowledge corpus
+
+## Request Body
+
+This endpoint does not use the standard request structure. Fields are sent at the top level.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `query` | string | Yes | — | Search query text |
+| `limit` | int | No | `10` | Maximum results (1–50) |
+| `generic_name_filter` | string | No | — | Filter by generic drug name |
+| `chunk_type_filter` | string | No | — | Filter by chunk type (e.g. `dosage`, `contraindication`, `indication`) |
+| `min_trust_tier` | int | No | — | Minimum source trust tier (1–4, lower = more trusted) |
+
+### Example Request
 
 ```json
 {
@@ -24,17 +46,9 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 }
 ```
 
-### Request Fields
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `query` | string | Yes | — | Search query text |
-| `limit` | int | No | `10` | Maximum results (1-50) |
-| `generic_name_filter` | string | No | — | Filter by generic drug name |
-| `chunk_type_filter` | string | No | — | Filter by chunk type (e.g. `dosage`, `contraindication`, `indication`) |
-| `min_trust_tier` | int | No | — | Minimum source trust tier (1-4, lower = more trusted) |
-
 ## Response
+
+### Example Response
 
 ```json
 {
@@ -66,7 +80,7 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 | `results` | object[] | Ranked search results |
 | `results[].citation_id` | string | Unique citation identifier |
 | `results[].text_content` | string | The chunk text content |
-| `results[].score` | float | Relevance score (0-1) |
+| `results[].score` | float | Relevance score (0–1) |
 | `results[].source_name` | string | Name of the source document |
 | `results[].source_version` | string | Version of the source |
 | `results[].source_trust_tier` | int | Trust tier (1 = highest) |
@@ -77,7 +91,7 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 | `results[].chunk_type` | string | Type of chunk (dosage, contraindication, etc.) |
 | `total` | int | Total number of results |
 
-## Status Codes
+## Error Responses
 
 | Code | Description |
 |------|-------------|
@@ -139,70 +153,8 @@ response = requests.post(
 print(response.json())
 ```
 
-### Node.js (axios)
+## Related Endpoints
 
-```javascript
-const axios = require('axios');
-
-const response = await axios.post('http://localhost:8000/v1/retrieval/search', {
-  query: 'What is the dosage of amoxicillin?',
-  limit: 5
-}, {
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Zam-AI-Key': '<your-api-key>'
-  }
-});
-
-console.log(response.data);
-```
-
-### Go
-
-```go
-package main
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-)
-
-func main() {
-    body := map[string]interface{}{
-        "query": "What is the dosage of amoxicillin?",
-        "limit": 5,
-    }
-    jsonBody, _ := json.Marshal(body)
-    req, _ := http.NewRequest("POST", "http://localhost:8000/v1/retrieval/search", bytes.NewBuffer(jsonBody))
-    req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("X-Zam-AI-Key", "<your-api-key>")
-
-    client := &http.Client{}
-    resp, _ := client.Do(req)
-    defer resp.Body.Close()
-    io.Copy(os.Stdout, resp.Body)
-}
-```
-
-### PHP
-
-```php
-<?php
-$ch = curl_init('http://localhost:8000/v1/retrieval/search');
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'X-Zam-AI-Key: <your-api-key>'
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'query' => 'What is the dosage of amoxicillin?',
-    'limit' => 5
-]));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = curl_exec($ch);
-curl_close($ch);
-echo $response;
-```
+- [Chat](/docs/endpoints/10_chat) — conversational endpoint that uses retrieval internally
+- [Prescription Explanation](/docs/endpoints/09_prescription_explain) — prescription explainer that retrieves drug references
+- [RAG Architecture](/docs/04_RAG_ARCHITECTURE) — how documents are ingested, chunked, and retrieved

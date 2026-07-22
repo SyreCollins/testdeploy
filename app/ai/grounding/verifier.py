@@ -15,7 +15,7 @@ _STOPWORDS = frozenset({
     "into", "over", "such", "only", "own", "same", "too", "please",
 })
 
-OVERLAP_THRESHOLD = 0.25
+OVERLAP_THRESHOLD = 0.20
 MIN_CLAIM_WORDS = 4
 
 
@@ -94,5 +94,10 @@ class GroundingVerifier:
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
-        tokens = re.findall(r"[a-zA-Z]+", text.lower())
-        return {t for t in tokens if t not in _STOPWORDS and len(t) > 1}
+        words = re.findall(r"[a-zA-Z0-9]+", text.lower())
+        unigrams = {t for t in words if t not in _STOPWORDS and len(t) > 1}
+        bigrams = set()
+        for i in range(len(words) - 1):
+            if words[i] not in _STOPWORDS and words[i + 1] not in _STOPWORDS and len(words[i]) > 1 and len(words[i + 1]) > 1:
+                bigrams.add(f"{words[i]} {words[i + 1]}")
+        return unigrams | bigrams

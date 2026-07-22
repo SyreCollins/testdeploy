@@ -1,10 +1,14 @@
-# API Key Management
+---
+title: API Key Management
+description: Admin endpoints for managing internal API keys used to authenticate to the Zam AI service
+icon: key
+---
 
-Admin endpoints for managing internal API keys used to authenticate to the Zam AI service.
+## Overview
 
-## Authentication
+Admin endpoints for managing internal API keys used to authenticate requests to the Zam AI service. These endpoints allow you to create, list, rotate, and revoke keys.
 
-These endpoints require a valid admin-level internal API key via the `X-Zam-AI-Key` header. Admin keys have elevated privileges for key management operations.
+See the [Authentication](/docs/guides/authentication) guide for authentication details.
 
 ---
 
@@ -14,7 +18,11 @@ These endpoints require a valid admin-level internal API key via the `X-Zam-AI-K
 
 Creates a new internal API key with a human-readable label and optional expiration.
 
-### Request
+### When to Use
+
+Provision new API keys for services, environments, or team members. The full key value is returned only at creation time.
+
+### Request Body
 
 ```json
 {
@@ -23,12 +31,19 @@ Creates a new internal API key with a human-readable label and optional expirati
 }
 ```
 
-### Request Fields
-
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `label` | string | Yes | Human-readable label (1-100 characters) |
 | `expires_at` | datetime | No | Optional expiration date |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/admin/keys \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <admin-api-key>" \
+  -d '{ "label": "test-key", "expires_at": "2027-01-01T00:00:00Z" }'
+```
 
 ### Response
 
@@ -45,8 +60,6 @@ Creates a new internal API key with a human-readable label and optional expirati
   "is_active": true
 }
 ```
-
-### Response Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -66,7 +79,20 @@ Creates a new internal API key with a human-readable label and optional expirati
 
 Lists all API keys with their metadata. Full key values are not returned — only prefixes.
 
+### When to Use
+
+Audit active keys, identify expiring keys, or find a key ID for rotation or revocation.
+
+### Example Request
+
+```bash
+curl -H "X-Zam-AI-Key: <admin-api-key>" \
+  http://localhost:8000/v1/admin/keys
+```
+
 ### Response
+
+`200 OK`
 
 ```json
 {
@@ -92,7 +118,20 @@ Lists all API keys with their metadata. Full key values are not returned — onl
 
 Revokes the current key and generates a new one with the same label and permissions.
 
+### When to Use
+
+Rotate keys as a security best practice or when a key may have been compromised.
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/admin/keys/key_abc123/rotate \
+  -H "X-Zam-AI-Key: <admin-api-key>"
+```
+
 ### Response
+
+`200 OK`
 
 ```json
 {
@@ -107,9 +146,22 @@ Revokes the current key and generates a new one with the same label and permissi
 
 `POST /v1/admin/keys/{key_id}/revoke`
 
-Immediately revokes an API key. The key can no longer authenticate requests.
+Immediately revokes an API key. The revoked key can no longer authenticate requests.
+
+### When to Use
+
+Decommission keys when services are shut down, environments are deprecated, or a key is known to be compromised.
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/admin/keys/key_abc123/revoke \
+  -H "X-Zam-AI-Key: <admin-api-key>"
+```
 
 ### Response
+
+`200 OK`
 
 ```json
 {
@@ -118,14 +170,17 @@ Immediately revokes an API key. The key can no longer authenticate requests.
 }
 ```
 
+<Tip>
+  Revoked keys cannot be reactivated. Use rotation if you need to replace a key without
+  disrupting service.
+</Tip>
+
 ---
 
-## Status Codes
+## Error Responses
 
 | Code | Description |
 |------|-------------|
-| `200` | Operation successful |
-| `201` | Key created successfully |
 | `400` | Validation error |
 | `401` | Missing or invalid API key |
 | `404` | Key not found |
@@ -133,29 +188,9 @@ Immediately revokes an API key. The key can no longer authenticate requests.
 | `422` | Invalid request body |
 | `500` | Internal service error |
 
-## Examples
+---
 
-### cURL
-
-```bash
-# Create a key
-curl -X POST http://localhost:8000/v1/admin/keys \
-  -H "Content-Type: application/json" \
-  -H "X-Zam-AI-Key: <admin-api-key>" \
-  -d '{ "label": "test-key", "expires_at": "2027-01-01T00:00:00Z" }'
-
-# List keys
-curl -H "X-Zam-AI-Key: <admin-api-key>" \
-  http://localhost:8000/v1/admin/keys
-
-# Rotate a key
-curl -X POST http://localhost:8000/v1/admin/keys/key_abc123/rotate \
-  -H "X-Zam-AI-Key: <admin-api-key>"
-
-# Revoke a key
-curl -X POST http://localhost:8000/v1/admin/keys/key_abc123/revoke \
-  -H "X-Zam-AI-Key: <admin-api-key>"
-```
+## More Examples
 
 ### JavaScript (fetch)
 
@@ -221,94 +256,7 @@ response = requests.post("http://localhost:8000/v1/admin/keys/key_abc123/revoke"
 print(response.json())
 ```
 
-### Node.js (axios)
+## Related Endpoints
 
-```javascript
-const axios = require('axios');
-
-const headers = {
-  'Content-Type': 'application/json',
-  'X-Zam-AI-Key': '<admin-api-key>'
-};
-
-// Create a key
-const createRes = await axios.post('http://localhost:8000/v1/admin/keys', {
-  label: 'test-key',
-  expires_at: '2027-01-01T00:00:00Z'
-}, { headers });
-console.log(createRes.data);
-
-// List keys
-const listRes = await axios.get('http://localhost:8000/v1/admin/keys', { headers });
-console.log(listRes.data);
-
-// Rotate a key
-const rotateRes = await axios.post('http://localhost:8000/v1/admin/keys/key_abc123/rotate', null, { headers });
-console.log(rotateRes.data);
-
-// Revoke a key
-const revokeRes = await axios.post('http://localhost:8000/v1/admin/keys/key_abc123/revoke', null, { headers });
-console.log(revokeRes.data);
-```
-
-### Go
-
-```go
-package main
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-)
-
-func main() {
-    client := &http.Client{}
-    headers := map[string]string{
-        "Content-Type": "application/json",
-        "X-Zam-AI-Key": "<admin-api-key>",
-    }
-
-    // Create a key
-    createBody, _ := json.Marshal(map[string]interface{}{
-        "label": "test-key",
-        "expires_at": "2027-01-01T00:00:00Z",
-    })
-    req1, _ := http.NewRequest("POST", "http://localhost:8000/v1/admin/keys", bytes.NewBuffer(createBody))
-    for k, v := range headers { req1.Header.Set(k, v) }
-    resp1, _ := client.Do(req1)
-    defer resp1.Body.Close()
-    io.Copy(os.Stdout, resp1.Body)
-
-    // List keys
-    req2, _ := http.NewRequest("GET", "http://localhost:8000/v1/admin/keys", nil)
-    req2.Header.Set("X-Zam-AI-Key", "<admin-api-key>")
-    resp2, _ := client.Do(req2)
-    defer resp2.Body.Close()
-    io.Copy(os.Stdout, resp2.Body)
-}
-```
-
-### PHP
-
-```php
-<?php
-$headers = [
-    'Content-Type: application/json',
-    'X-Zam-AI-Key: <admin-api-key>'
-];
-
-// Create a key
-$ch = curl_init('http://localhost:8000/v1/admin/keys');
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'label' => 'test-key',
-    'expires_at' => '2027-01-01T00:00:00Z'
-]));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-echo curl_exec($ch);
-curl_close($ch);
-```
+- [Authentication](/docs/guides/authentication) — how API keys are used to authenticate
+- [Security & Compliance](/docs/07_SECURITY_AND_COMPLIANCE) — API security model and access control

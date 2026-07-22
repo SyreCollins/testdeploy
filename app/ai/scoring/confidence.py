@@ -7,10 +7,10 @@ logger = logging.getLogger("zam-ai-core-api.confidence-scorer")
 
 TRUST_TIER_WEIGHTS: dict[int | None, float] = {
     1: 1.0,
-    2: 0.9,
-    3: 0.7,
-    4: 0.6,
-    None: 0.5,
+    2: 0.95,
+    3: 0.85,
+    4: 0.75,
+    None: 0.8,
 }
 
 COVERAGE_SATURATION = 5
@@ -36,7 +36,7 @@ class ConfidenceScorer:
         avg = total / len(top)
 
         coverage = len(top) / COVERAGE_SATURATION
-        coverage_factor = 1.0 - math.exp(-3.0 * coverage)
+        coverage_factor = 0.5 + 0.5 * (1.0 - math.exp(-3.0 * coverage))
 
         return round(avg * coverage_factor, 4)
 

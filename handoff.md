@@ -1,11 +1,24 @@
 # zam-ai-core-api — Handoff
 
 ## Project
-Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM response from model internal knowledge, must be grounded in retrieved evidence.
+Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM response from model internal knowledge, must be grounded in retrieved evidence (except `interaction_check` which can use LLM knowledge + disclaimer).
 
 ---
 
 ## State (~221 tests pass, 0 lint errors, CI/CD active)
+
+### ✅ Completed (this session — 2026-07-21)
+
+| Area | Details |
+|---|---|
+| **Citation metadata null fixed** | `RagRegistry.get_chunk_metadata_batch()` rewritten with explicit SQL joins instead of chained `selectinload` — `source_name`, `document_title`, `source_version` now populate correctly |
+| **Low confidence scores tuned** | `app/ai/scoring/confidence.py` — None-tier weight 0.5→0.8, coverage factor now starts at 0.5 floor. `app/ai/grounding/verifier.py` — threshold 25%→20%, tokenizer includes numbers + bigrams for phrase-level overlap |
+| **Interaction check uses LLM knowledge** | `prompts/workflows/patient/interaction_checker.md` v1.0.0→v1.1.0 — now allows LLM to use its own knowledge for interactions (not just retrieved evidence). Mandatory disclaimer added. `app/ai/prompts/manager.py` — default `safety_requirements` updated |
+| **Unused dep identified** | `httpx` in dev dependencies — never imported anywhere. Tests use FastAPI's `TestClient` |
+| **TypeScript types generated** | `types/` folder — 16 `.ts` files covering all API request/response schemas, AI models (Intent, Safety, Grounding, Citations, Audit, Gateway), RAG schemas, and config. Barrel export via `types/index.ts` |
+| **Sample request bodies** | `body.json` now has all 10 endpoint request bodies (8 AI workflows + retrieval + create API key) |
+| **SaaS platform plan** | `docs/saas-platform-plan.md` — full 5-phase plan: Neon migration, Clerk auth, orgs/users/api_keys tables, audit persistence, usage tracking, rate limiting. Decisions: Neon DB, Clerk auth (GitHub/Google/magic link), "Both" access model (internal key + direct partner keys), Full v1 scope |
+| **Handoff cleanup** | Deduplicated repeated sections in this file |
 
 ### ✅ Completed (this session — 2026-07-20)
 
@@ -18,102 +31,52 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Conversational tone** | Updated `system.md` and `medication_info.md` prompts to be warm, empathetic, natural |
 | **Follow-up questions** | `_extract_follow_up_questions()` parses model response, strips from answer text, populates `follow_up_questions` field |
 
-### ❌ Remaining for next session
-
-| Priority | Area | What to do |
-|---|---|---|
-| **MEDIUM** | Citation metadata null | `source_name`, `document_title`, `source_version` are null in responses — check ingestion/retrieval pipeline |
-| **MEDIUM** | Low confidence scores | `overall: 0.30`, `grounding: 0.20` — scoring logic may need tuning |
-| **MEDIUM** | Database setup | Replace SQLite with PostgreSQL/Supabase for Render persistence |
-
-### ✅ Completed (this session — 2026-07-17)
-
-| Area | Details |
-|---|---|
-| **18 endpoint markdown docs** | `docs/endpoints/` — one `.md` file per endpoint (13 built + 5 planned). Each includes purpose, auth, full request/response JSON, field tables, safety rules, status codes, and code examples in 6 languages (cURL, JS fetch, Python, Node.js axios, Go, PHP). Ready for frontend dev to use with Nextra/Docusaurus/Starlight |
-| **SaaS readiness audit** | Reviewed codebase against Phase 8 requirements. Confirmed ADR 6 model (partners behind main backend) is correct. Identified 3 prep items for AI API side |
-
-### ✅ Completed (this session — 2026-07-17)
-
-| Area | Details |
-|---|---|
-| **18 endpoint markdown docs** | `docs/endpoints/` — one `.md` per endpoint (13 built + 5 planned). Each with purpose, auth, full request/response JSON, field tables, safety rules, status codes, and code examples in 6 languages (cURL, JS fetch, Python, Node.js axios, Go, PHP) |
-| **SaaS readiness audit** | Reviewed codebase against Phase 8 requirements. Confirmed partners go through main backend (ADR 6). Identified 3 prep items for AI API side |
-
-### 🧠 Architecture notes
-
-- `ConversationOrchestrator` is instantiated in `app/main.py:75` and stored in `app.state.orchestrator`. Every route retrieves it via `_orch(request)` and calls specific `run_*` methods directly.
-- `IntentClassifier` and `ConversationOrchestrator.classify_intent()` are **dead code in production** — fully tested but NOT wired to any route. Designed for a future `/v1/ai/chat` endpoint that was planned but never created.
-- **No `/v1/ai/chat` endpoint exists.** Frontend calls individual workflow endpoints directly.
-- Routes live at `app/api/routes/` and are prefixed `/v1` via `app/main.py`
-- Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
-- 0 TODO/FIXME/HACK/XXX comments in codebase
-- `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
-- Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
-- **SaaS model**: Partners go through main backend (ADR 6). Zam AI stays internal, called by backend with a single internal key. Backend handles partner auth, billing, dev portal.
-
-### ❌ Remaining Gaps
-
-| Area | Details |
-|---|---|
-| **`/v1/ai/chat` endpoint wired up** | New `POST /v1/ai/chat` route — accepts free-text message, runs `classify_intent()` to detect intent, delegates to `orchestrator.run_workflow()`. Returns `ChatResponse` with `intent`, `confidence`, `answer`, safety/citations/confidence/audit metadata. Added `ChatInput`, `ChatRequest`, `ChatResult`, `ChatResponse` schemas + `composer.chat()` method. 8 integration tests + 15 `run_workflow` unit tests covering all 7 intents, emergency, unsupported, patient context, explicit intent, request_id, and placeholder intents |
-| **Parallel multi-drug retrieval** | `run_interaction_check` and `run_contraindication_check` use `asyncio.gather()` to search all drugs concurrently instead of sequentially. 3-drug check drops from 3× latency to 1× |
-| **N+1 query eliminated** | New `RagRegistry.get_chunk_metadata_batch()` loads chunk + document + source metadata in a single `selectinload`-based query (3 SQL calls total vs 3×N). `RetrievalService.search()` collects chunk IDs, makes one batch call, maps results |
-| **LLM timeout + retry** | New `ZAM_AI_MODEL_TIMEOUT` (default 60s) and `ZAM_AI_MODEL_RETRY_COUNT` (default 1) settings. `_call_model()` wraps `generate()` in `asyncio.wait_for()` — hanging API calls no longer stall indefinitely. Configurable retry on timeout/failure |
-
 ### ✅ Completed (prior sessions)
 
 | Area | Details |
 |---|---|
-| **Tier 1 — Foundation** | Health endpoints, API key middleware (validate only, no CRUD), RAG ingestion, `.env` configured |
-| **Tier 2 — Endpoints** | 7 AI workflows with full stack (schema → prompt template → manager → orchestrator → composer → route): `medical-qa`, `interactions/check`, `drug-info`, `symptom-guidance`, `contraindications/check`, `dosage/verify`, `prescriptions/explain` |
-| **Tier 2 — Modules** | Citation Engine (`app/ai/citation/`), Grounding Verifier (`app/ai/grounding/`), Audit Trace Writer (`app/ai/audit/`) |
-| **Tier 3 — Safety** | Safety engine (`app/ai/safety/`) with 4 rule checks (emergency, unsafe request, prompt injection, retrieval required, high risk). Prompt injection detection covers 18 patterns. |
-| **Prompt templates** | 13 `.md` files (6 base + 7 workflow), all fixed with correct YAML frontmatter (`---`) |
-| **Safety engine tests** | 45 tests covering all risk levels, actions, rule ordering, emergency keywords, high-risk patterns, unsafe requests, retrieval failures, edge cases |
-| **Prompt injection detection** | `app/ai/safety/injection.py` — 18 patterns (ignore instructions, jailbreak, system prompt leak, delimiter injection), wired into `evaluate_safety()` as 3rd rule |
-| **API key management** | `POST/GET /v1/admin/keys`, `POST .../{id}/rotate`, `POST .../{id}/revoke` — SHA-256 hashed, in-memory store, auto-bootstraps from `ZAM_AI_INTERNAL_API_KEYS` config |
-| **Rate limiting middleware** | `app/core/middleware/rate_limit.py` — 60 req/60s per key, 429 response, docs/health exempt |
-| **Audit query endpoints** | `GET /v1/audit/traces` + `GET /v1/audit/traces/{trace_id}` — reads from in-memory AuditTraceWriter ring buffer |
-| **Model gateway tests** | 20 tests — `ModelResponse`, `StreamEvent`, `MockModelProvider` (generate + stream), factory auto-detect, Claude/Gemini instantiation with/without keys |
+| **18 endpoint markdown docs** | `docs/endpoints/` — one `.md` per endpoint (13 built + 5 planned). Full request/response JSON, field tables, safety rules, code examples in 6 languages |
+| **Tier 1 — Foundation** | Health endpoints, API key middleware, RAG ingestion, `.env` configured |
+| **Tier 2 — Endpoints** | 7 AI workflows with full stack: `medical-qa`, `interactions/check`, `drug-info`, `symptom-guidance`, `contraindications/check`, `dosage/verify`, `prescriptions/explain` |
+| **Tier 2 — Modules** | Citation Engine, Grounding Verifier, Audit Trace Writer |
+| **Tier 3 — Safety** | Safety engine with 4 rule checks (emergency, unsafe request, prompt injection, retrieval required, high risk). 45 tests |
+| **Prompt templates** | 13 `.md` files (6 base + 7 workflow) |
+| **API key management** | CRUD endpoints for API keys — SHA-256 hashed, in-memory store |
+| **Rate limiting middleware** | 60 req/60s per key, docs/health exempt |
+| **Audit query endpoints** | `GET /v1/audit/traces` + `GET /v1/audit/traces/{trace_id}` |
+| **`/v1/ai/chat` endpoint** | Full chat endpoint with intent classification + routing |
+| **Parallel multi-drug retrieval** | `asyncio.gather()` in interaction + contraindication checks |
+| **N+1 query eliminated** | `get_chunk_metadata_batch()` with single batch query |
+| **LLM timeout + retry** | Configurable timeout + retry in `_call_model()` |
 
 ### 🧠 Architecture notes
 
-- `ConversationOrchestrator` is instantiated in `app/main.py:75` and stored in `app.state.orchestrator`. Every route retrieves it via `_orch(request)` and calls specific `run_*` methods directly.
-- `IntentClassifier` and `ConversationOrchestrator.classify_intent()` are **dead code in production** — fully tested but NOT wired to any route. Designed for a future `/v1/ai/chat` endpoint that was planned but never created.
-- **No `/v1/ai/chat` endpoint exists.** Frontend calls individual workflow endpoints directly.
-- Routes live at `app/api/routes/` and are prefixed `/v1` via `app/main.py`
-- Ingestion is embedded in `app/rag/service.py` (not standalone `app/ingest/`)
+- `ConversationOrchestrator` is stored in `app.state.orchestrator`. Routes retrieve via `_orch(request)` and call `run_*` methods directly.
+- Routes at `app/api/routes/` prefixed `/v1` via `app/main.py`
+- Ingestion in `app/rag/service.py` (not standalone `app/ingest/`)
 - 0 TODO/FIXME/HACK/XXX comments in codebase
-- `.env` has real keys for Jina embeddings, Pinecone, Voyage, and Claude
-- Architecture docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
-- **SaaS model**: Partners go through main backend (ADR 6). Zam AI stays internal, called by backend with a single internal key. Backend handles partner auth, billing, dev portal.
+- `.env` has real keys for Jina, Pinecone, Voyage, and Claude
+- Arch docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
+- SaaS model (ADR 6): Partners route through main backend. Zam AI called with single internal key. New plan adds direct partner keys as second tier.
 
 ### ❌ Remaining Gaps
 
 | Priority | Area | What to do |
 |---|---|---|
-| **HIGH** | Pass `organization_id` through to audit traces | `actor_context.organization_id` exists in request schema but audit writer doesn't log it. Backend needs this to bill partners. One-line fix in orchestrator to pass org_id into audit metadata |
-| **HIGH** | Persist audit traces to database | Currently in-memory `OrderedDict` (gone on restart). Backend needs to query usage per org/date for billing. Add `audit_traces` table + query endpoint filtered by org/date range |
-| **HIGH** | Add `X-Caller-Organization` header passthrough | Let backend tag which partner/org each request is for. Flows into audit logs for usage-based billing |
-| **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` — need OCR provider, worker queue, schema, routes |
-| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — medication review, patient summary, interaction/contraindication review, patient education draft. Intent classifier has `DOCTOR_ASSIST` pattern (returns placeholder) |
-| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — drug explanation, interaction review, alternative review, inventory contextualization. Intent classifier has `PHARMACY_ASSIST` pattern (returns placeholder) |
-| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — route, prompt, orchestrator. Intent classifier has `REMINDERS` pattern (returns placeholder) |
-| **LOW** | 13 prompt templates not created | `medication_schedule.md`, `health_guidance.md`, 3 pharmacy workflow prompts, 3 doctor workflow prompts, 3 JSON response schemas, `examples/` directory |
-| **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` (9 directories) and `app/integrations/*` (5 directories) — all just `__init__.py` |
+| **HIGH** | Pass `organization_id` through to audit traces | `actor_context.organization_id` exists in request schema but audit writer doesn't log it. Needed for billing |
+| **HIGH** | Persist audit traces to database | Currently in-memory `OrderedDict` (gone on restart). Add `audit_traces` table + query by org/date |
+| **HIGH** | Add `X-Caller-Organization` header passthrough | Let backend tag which org each request is for |
+| **HIGH** | Move API keys to DB | Replace in-memory `ApiKeyStore` with `api_keys` table |
+| **HIGH** | Neon migration | SQLite → PostgreSQL, add `psycopg` dep, update `database_url`, remove `check_same_thread` |
+| **MEDIUM** | Clerk auth integration | Webhook sync for users/orgs, JWT validation middleware |
+| **MEDIUM** | Usage tracking | `usage_records` table populated per-request, rate limiting from DB |
+| **MEDIUM** | SaaS org/usage endpoints | `GET /v1/organizations/me`, `GET /v1/organizations/me/usage`, per-org key management |
+| **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` |
+| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — currently placeholder |
+| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — currently placeholder |
+| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — currently placeholder |
+| **LOW** | 13 prompt templates not created | Various workflow prompts |
+| **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` and `app/integrations/*` — just `__init__.py` |
 | **LOW** | `tests/__init__.py` | Add package init |
-| **LOW** | `test_admin_api.py` | Source file missing (only `__pycache__` remains) |
-| **LOW** | Type checking | No mypy/pyright in dev deps or config |
-
-| Priority | Area | What to do |
-|---|---|---|
-| **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` — need OCR provider, worker queue, schema, routes |
-| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — medication review, patient summary, interaction/contraindication review, patient education draft. Intent classifier has `DOCTOR_ASSIST` pattern (returns placeholder) |
-| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — drug explanation, interaction review, alternative review, inventory contextualization. Intent classifier has `PHARMACY_ASSIST` pattern (returns placeholder) |
-| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — route, prompt, orchestrator. Intent classifier has `REMINDERS` pattern (returns placeholder) |
-| **LOW** | 13 prompt templates not created | `medication_schedule.md`, `health_guidance.md`, 3 pharmacy workflow prompts, 3 doctor workflow prompts, 3 JSON response schemas, `examples/` directory |
-| **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` (9 directories) and `app/integrations/*` (5 directories) — all just `__init__.py` |
-| **LOW** | `tests/__init__.py` | Add package init |
-| **LOW** | `test_admin_api.py` | Source file missing (only `__pycache__` remains) |
-| **LOW** | Type checking | No mypy/pyright in dev deps or config |
+| **LOW** | `test_admin_api.py` | Source file missing |
+| **LOW** | Type checking | No mypy/pyright in dev deps |

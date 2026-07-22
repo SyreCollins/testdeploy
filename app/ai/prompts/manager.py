@@ -50,7 +50,7 @@ class PromptManager:
         medications: list[dict],
         evidence: list[dict],
         patient_context: dict | None = None,
-        safety_requirements: str = "Never invent interactions or severity. Only use retrieved evidence.",
+        safety_requirements: str = "Only report clinically recognized interactions. Always include a disclaimer to consult a doctor or pharmacist.",
     ) -> tuple[str, str | None]:
         builder = PromptBuilder(self._registry)
 

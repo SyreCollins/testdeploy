@@ -1,0 +1,30 @@
+export interface Settings {
+  environment: string;
+  service_name: string;
+  service_version: string;
+  log_level: string;
+  enable_openapi_docs: boolean;
+  internal_api_keys: string;
+  readiness_check_dependencies: boolean;
+  database_url: string;
+  embedding_provider: string;
+  voyage_api_key: string | null;
+  voyage_embedding_model: string;
+  jina_api_key: string | null;
+  gemini_api_key: string | null;
+  embedding_batch_timeout: number;
+  model_timeout: number;
+  model_retry_count: number;
+  model_provider: string;
+  claude_api_key: string | null;
+  claude_model: string;
+  gemini_model: string;
+  vector_store: string;
+  pinecone_api_key: string | null;
+  pinecone_index_name: string;
+  qdrant_url: string | null;
+  qdrant_api_key: string | null;
+  qdrant_collection_name: string;
+  internal_api_keys_list: string[];
+  is_local: boolean;
+}

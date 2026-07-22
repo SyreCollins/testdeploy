@@ -1,18 +1,37 @@
-# Prescription Explanation
+---
+title: Prescription Explanation
+description: Translates structured prescription data into patient-friendly language with citations
+icon: file-text
+---
+
+## Overview
+
+The Prescription Explanation endpoint translates raw prescription text into easy-to-understand language for patients. It returns medication purpose, usage instructions, warnings, and side effects — all backed by approved medical sources. Patient context (age, known conditions, allergies) personalizes the output and triggers relevant warnings.
+
+## Endpoint
 
 `POST /v1/ai/prescriptions/explain`
 
-Explains structured prescription information in patient-friendly language.
-
-## Purpose
-
-Translates prescription text into easy-to-understand language for patients. Includes medication purpose, usage instructions, warnings, and side effects — all backed by approved sources.
-
 ## Authentication
 
-Requires a valid internal API key via the `X-Zam-AI-Key` header.
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide.
 
-## Request
+## When to Use
+
+- Displaying prescription details to patients in a mobile or web app
+- Powering patient-facing medication summaries with citations
+- Surfacing allergy or condition-based warnings before dispensing
+
+## Request Body
+
+The request follows the [common request structure](/docs/guides/common-request-structure) with `caller`, `actor_context`, `authorization_context`, and `locale` fields.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.prescription_text` | string | Yes | Raw prescription text to explain |
+| `input.patient_context` | object | No | Patient context for personalized explanation |
+
+### Example Request
 
 ```json
 {
@@ -51,14 +70,9 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 }
 ```
 
-### Request Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `input.prescription_text` | string | Yes | Raw prescription text to explain |
-| `input.patient_context` | object | No | Patient context for personalized explanation |
-
 ## Response
+
+### Example Response
 
 ```json
 {
@@ -130,14 +144,7 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 | `result.sections[].content` | string | Patient-friendly explanation |
 | `result.warnings` | string[] | Important warnings (e.g. allergies, interactions) |
 
-## Safety Rules
-
-- Uses structured prescription data supplied by backend or OCR result
-- Retrieves drug references for all claims
-- Does not assume diagnosis unless supplied
-- Warns when patient allergies or conditions conflict with the medication
-
-## Status Codes
+## Error Responses
 
 | Code | Description |
 |------|-------------|
@@ -146,6 +153,14 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 | `401` | Missing or invalid API key |
 | `422` | Invalid request body |
 | `500` | Internal service error |
+
+## Safety Rules
+
+<Note>
+  The endpoint uses structured prescription data supplied by the backend or OCR result,
+  retrieves drug references for all claims, does not assume a diagnosis unless supplied,
+  and warns when patient allergies or conditions conflict with the medication.
+</Note>
 
 ## Examples
 
@@ -223,93 +238,9 @@ response = requests.post(
 print(response.json())
 ```
 
-### Node.js (axios)
+## Related Endpoints
 
-```javascript
-const axios = require('axios');
-
-const response = await axios.post('http://localhost:8000/v1/ai/prescriptions/explain', {
-  actor_context: {
-    actor_type: 'patient',
-    actor_id: 'user-202',
-    role: 'patient'
-  },
-  input: {
-    prescription_text: 'Amoxicillin 500 mg. Take one capsule three times daily for 7 days.',
-    patient_context: { age: 35 }
-  }
-}, {
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Zam-AI-Key': '<your-api-key>'
-  }
-});
-
-console.log(response.data);
-```
-
-### Go
-
-```go
-package main
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-)
-
-func main() {
-    body := map[string]interface{}{
-        "actor_context": map[string]string{
-            "actor_type": "patient",
-            "actor_id":   "user-202",
-            "role":       "patient",
-        },
-        "input": map[string]interface{}{
-            "prescription_text": "Amoxicillin 500 mg. Take one capsule three times daily for 7 days.",
-            "patient_context": map[string]interface{}{
-                "age": 35,
-            },
-        },
-    }
-    jsonBody, _ := json.Marshal(body)
-    req, _ := http.NewRequest("POST", "http://localhost:8000/v1/ai/prescriptions/explain", bytes.NewBuffer(jsonBody))
-    req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("X-Zam-AI-Key", "<your-api-key>")
-
-    client := &http.Client{}
-    resp, _ := client.Do(req)
-    defer resp.Body.Close()
-    io.Copy(os.Stdout, resp.Body)
-}
-```
-
-### PHP
-
-```php
-<?php
-$ch = curl_init('http://localhost:8000/v1/ai/prescriptions/explain');
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'X-Zam-AI-Key: <your-api-key>'
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'actor_context' => [
-        'actor_type' => 'patient',
-        'actor_id' => 'user-202',
-        'role' => 'patient'
-    ],
-    'input' => [
-        'prescription_text' => 'Amoxicillin 500 mg. Take one capsule three times daily for 7 days.',
-        'patient_context' => ['age' => 35]
-    ]
-]));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = curl_exec($ch);
-curl_close($ch);
-echo $response;
-```
+- [Chat](/docs/endpoints/10_chat) — multi-intent conversational endpoint that can route to prescription explanation
+- [Retrieval Search](/docs/endpoints/11_retrieval_search) — search the medical knowledge corpus used for grounding
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how Zam AI generates patient-friendly explanations
+- [Prompt Architecture](/docs/03.1_PROMPT_ARCHITECTURE) — prompt design for prescription explanation workflows

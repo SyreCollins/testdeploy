@@ -1,0 +1,201 @@
+---
+title: Reminder Schedule Parsing
+description: Convert natural language medication instructions into structured reminder schedules
+icon: calendar-clock
+---
+
+<Note>
+  **Status: Planned** — This endpoint is not yet implemented.
+</Note>
+
+## Overview
+
+Parses natural language medication instructions and returns a structured schedule that the backend can use to set up patient reminders. The backend stores and sends reminders — Zam AI only parses and suggests the schedule structure.
+
+## Authentication
+
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide for details.
+
+## Common Request Fields
+
+Every AI endpoint accepts a standard set of top-level fields for request tracing, caller identification, actor context, authorization, and locale. See the [Common Request Structure](/docs/guides/common-request-structure) guide for details.
+
+---
+
+## Parse Schedule
+
+`POST /v1/ai/reminders/parse-schedule`
+
+### When to Use
+
+Use this endpoint when a patient provides free-text medication instructions that need to be converted into a structured reminder schedule for your application's reminder system.
+
+### Request Body
+
+```json
+{
+  "input": {
+    "instruction_text": "Take one capsule three times daily for 7 days",
+    "medication_name": "amoxicillin"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.instruction_text` | string | Yes | Natural language medication instructions |
+| `input.medication_name` | string | No | Medication name for context |
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/ai/reminders/parse-schedule \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <your-api-key>" \
+  -d '{
+    "actor_context": {
+      "actor_type": "patient",
+      "actor_id": "user-404",
+      "role": "patient"
+    },
+    "input": {
+      "instruction_text": "Take one capsule three times daily for 7 days",
+      "medication_name": "amoxicillin"
+    }
+  }'
+```
+
+### Response
+
+`200 OK`
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "parse_schedule",
+  "result": {
+    "schedule": {
+      "frequency": "three_times_daily",
+      "times_per_day": 3,
+      "interval_hours": 8,
+      "duration_days": 7,
+      "specific_times": ["08:00", "14:00", "20:00"],
+      "as_needed": false,
+      "notes": "Take with or without food"
+    },
+    "confidence": 0.88,
+    "requires_clarification": false
+  },
+  "audit": {
+    "trace_id": "ai-trace-606",
+    "prompt_version": "parse_schedule:v1",
+    "model_provider": "provider-name",
+    "model_version": "model-version"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result.schedule.frequency` | string | Parsed frequency (e.g. `three_times_daily`, `once_daily`, `as_needed`) |
+| `result.schedule.times_per_day` | int | Number of times per day |
+| `result.schedule.interval_hours` | int | Suggested interval in hours |
+| `result.schedule.duration_days` | int | Duration in days |
+| `result.schedule.specific_times` | string[] | Suggested specific times |
+| `result.schedule.as_needed` | boolean | Whether medication is as-needed |
+| `result.schedule.notes` | string | Additional notes |
+| `result.confidence` | float | Parsing confidence (0-1) |
+| `result.requires_clarification` | boolean | Whether instructions need clarification |
+
+---
+
+## Safety Rules
+
+- The backend stores and sends reminders — Zam AI only parses and suggests schedule structure
+- Ambiguous instructions require clarification
+- Does not store or manage reminder state
+
+---
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Schedule parsed successfully |
+| `400` | Validation error |
+| `401` | Missing or invalid API key |
+| `422` | Invalid request body |
+| `500` | Internal service error |
+
+<Warning>
+  When `requires_clarification` is `true`, the instructions are ambiguous and should
+  not be used to set up reminders without manual review.
+</Warning>
+
+<Tip>
+  Include `medication_name` when available — it improves parsing accuracy by providing
+  context for dosage and frequency interpretation.
+</Tip>
+
+---
+
+## More Examples
+
+### JavaScript (fetch)
+
+```javascript
+const response = await fetch('http://localhost:8000/v1/ai/reminders/parse-schedule', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Zam-AI-Key': '<your-api-key>'
+  },
+  body: JSON.stringify({
+    actor_context: {
+      actor_type: 'patient',
+      actor_id: 'user-404',
+      role: 'patient'
+    },
+    input: {
+      instruction_text: 'Take one capsule three times daily for 7 days',
+      medication_name: 'amoxicillin'
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Python (requests)
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/v1/ai/reminders/parse-schedule",
+    headers={
+        "Content-Type": "application/json",
+        "X-Zam-AI-Key": "<your-api-key>"
+    },
+    json={
+        "actor_context": {
+            "actor_type": "patient",
+            "actor_id": "user-404",
+            "role": "patient"
+        },
+        "input": {
+            "instruction_text": "Take one capsule three times daily for 7 days",
+            "medication_name": "amoxicillin"
+        }
+    }
+)
+
+print(response.json())
+```
+
+## Related Endpoints
+
+- [Common Request Structure](/docs/guides/common-request-structure) — shared request fields
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how Zam AI parses and structures medical instructions

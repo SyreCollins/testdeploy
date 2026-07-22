@@ -1,18 +1,38 @@
-# Chat
+---
+title: Chat
+description: Multi-intent conversational endpoint that classifies user intent and routes to the appropriate medical workflow
+icon: message-circle
+---
+
+## Overview
+
+The Chat endpoint provides a unified conversational interface that automatically detects the user's intent — medical Q&A, drug information, symptom guidance, interaction checks, and more — and routes to the correct workflow. The response includes the classified intent and confidence score for transparency.
+
+## Endpoint
 
 `POST /v1/ai/chat`
 
-Multi-intent conversational endpoint that classifies the user's intent and routes to the appropriate workflow.
-
-## Purpose
-
-Provides a unified conversational interface that automatically detects the user's intent (medical Q&A, drug info, symptom guidance, etc.) and routes to the correct workflow. Returns the classified intent and confidence for transparency.
-
 ## Authentication
 
-Requires a valid internal API key via the `X-Zam-AI-Key` header.
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide.
 
-## Request
+## When to Use
+
+- Building patient-facing chat or assistant features
+- Handling free-form medical questions that span multiple domains
+- Powering conversational symptom checkers or medication queries
+
+## Request Body
+
+The request follows the [common request structure](/docs/guides/common-request-structure) with `caller`, `actor_context`, `authorization_context`, and `locale` fields.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.message` | string | Yes | The user's message |
+| `input.patient_context` | object | No | Patient context for personalized responses |
+| `input.conversation_context` | object | No | Multi-turn conversation history |
+
+### Example Request
 
 ```json
 {
@@ -55,15 +75,9 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 }
 ```
 
-### Request Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `input.message` | string | Yes | The user's message |
-| `input.patient_context` | object | No | Patient context |
-| `input.conversation_context` | object | No | Multi-turn conversation history |
-
 ## Response
+
+### Example Response
 
 ```json
 {
@@ -112,8 +126,8 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `result.intent` | string | Classified intent (`medical_qa`, `drug_info`, `symptom_guidance`, `interaction_check`, `contraindication_check`, `dosage_verify`, `prescription_explain`, `general`) |
-| `result.confidence` | float | Intent classification confidence (0-1) |
+| `result.intent` | string | Classified intent: `medical_qa`, `drug_info`, `symptom_guidance`, `interaction_check`, `contraindication_check`, `dosage_verify`, `prescription_explain`, or `general` |
+| `result.confidence` | float | Intent classification confidence (0–1) |
 | `result.answer` | string | The routed workflow's response |
 
 ## Supported Intents
@@ -129,7 +143,7 @@ Requires a valid internal API key via the `X-Zam-AI-Key` header.
 | `prescription_explain` | Prescription Explanation |
 | `general` | General conversational response |
 
-## Status Codes
+## Error Responses
 
 | Code | Description |
 |------|-------------|
@@ -222,100 +236,11 @@ response = requests.post(
 print(response.json())
 ```
 
-### Node.js (axios)
+## Related Endpoints
 
-```javascript
-const axios = require('axios');
-
-const response = await axios.post('http://localhost:8000/v1/ai/chat', {
-  actor_context: {
-    actor_type: 'patient',
-    actor_id: 'user-303',
-    role: 'patient'
-  },
-  input: {
-    message: 'Can I take ibuprofen if I have stomach ulcers?',
-    patient_context: {
-      age: 42,
-      known_conditions: ['peptic ulcer disease']
-    }
-  }
-}, {
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Zam-AI-Key': '<your-api-key>'
-  }
-});
-
-console.log(response.data);
-```
-
-### Go
-
-```go
-package main
-
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-)
-
-func main() {
-    body := map[string]interface{}{
-        "actor_context": map[string]string{
-            "actor_type": "patient",
-            "actor_id":   "user-303",
-            "role":       "patient",
-        },
-        "input": map[string]interface{}{
-            "message": "Can I take ibuprofen if I have stomach ulcers?",
-            "patient_context": map[string]interface{}{
-                "age":              42,
-                "known_conditions": []string{"peptic ulcer disease"},
-            },
-        },
-    }
-    jsonBody, _ := json.Marshal(body)
-    req, _ := http.NewRequest("POST", "http://localhost:8000/v1/ai/chat", bytes.NewBuffer(jsonBody))
-    req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("X-Zam-AI-Key", "<your-api-key>")
-
-    client := &http.Client{}
-    resp, _ := client.Do(req)
-    defer resp.Body.Close()
-    io.Copy(os.Stdout, resp.Body)
-}
-```
-
-### PHP
-
-```php
-<?php
-$ch = curl_init('http://localhost:8000/v1/ai/chat');
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'X-Zam-AI-Key: <your-api-key>'
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-    'actor_context' => [
-        'actor_type' => 'patient',
-        'actor_id' => 'user-303',
-        'role' => 'patient'
-    ],
-    'input' => [
-        'message' => 'Can I take ibuprofen if I have stomach ulcers?',
-        'patient_context' => [
-            'age' => 42,
-            'known_conditions' => ['peptic ulcer disease']
-        ]
-    ]
-]));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-$response = curl_exec($ch);
-curl_close($ch);
-echo $response;
-```
+- [Prescription Explanation](/docs/endpoints/09_prescription_explain) — explain prescription text in patient-friendly language
+- [Retrieval Search](/docs/endpoints/11_retrieval_search) — search the medical knowledge corpus used for grounding
+- [Audit Traces](/docs/endpoints/12_audit_traces) — view audit logs for chat requests
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how the chat endpoint classifies intent and routes workflows
+- [Prompt Architecture](/docs/03.1_PROMPT_ARCHITECTURE) — prompt design for multi-intent conversation
+- [RAG Architecture](/docs/04_RAG_ARCHITECTURE) — retrieval-augmented generation for grounded chat responses

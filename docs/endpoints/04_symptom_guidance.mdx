@@ -1,0 +1,232 @@
+---
+title: Symptom Guidance
+description: Provide non-diagnostic symptom triage and guidance for patients
+icon: alert-triangle
+---
+
+## Overview
+
+Helps patients understand the urgency of their symptoms and provides appropriate guidance. The endpoint never provides a diagnosis — it triages, educates, and escalates. Red-flag symptoms (chest pain, difficulty breathing, stroke signs) trigger immediate emergency escalation.
+
+## Endpoint
+
+```
+POST /v1/ai/symptom-guidance
+```
+
+## Authentication
+
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide.
+
+## When to Use
+
+Call this endpoint when a patient describes symptoms and needs to understand their urgency. Ideal for symptom checkers, triage tools, and patient intake forms.
+
+<Warning>
+  This endpoint never provides a diagnosis. It only triages and educates. Patients
+  with red-flag symptoms are immediately escalated for emergency care.
+</Warning>
+
+## Request Body
+
+The request body includes standard fields for tracing, caller identification, actor context, authorization, and locale. See the [Common Request Structure](/docs/guides/common-request-structure) guide for details on those fields.
+
+```json
+{
+  "input": {
+    "symptoms": "I have chest pain and shortness of breath",
+    "patient_context": {
+      "age": 55,
+      "sex": "male",
+      "known_conditions": ["hypertension"],
+      "allergies": [],
+      "current_medications": ["lisinopril"]
+    }
+  }
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.symptoms` | string | Yes | Description of symptoms |
+| `input.patient_context` | object | No | Patient context for triage accuracy |
+
+## Example Request
+
+### cURL
+
+```bash
+curl -X POST http://localhost:8000/v1/ai/symptom-guidance \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <your-api-key>" \
+  -d '{
+    "actor_context": {
+      "actor_type": "patient",
+      "actor_id": "user-456",
+      "role": "patient"
+    },
+    "input": {
+      "symptoms": "I have a mild headache and feel tired",
+      "patient_context": {
+        "age": 30
+      }
+    }
+  }'
+```
+
+### JavaScript (fetch)
+
+```javascript
+const response = await fetch('http://localhost:8000/v1/ai/symptom-guidance', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Zam-AI-Key': '<your-api-key>'
+  },
+  body: JSON.stringify({
+    actor_context: {
+      actor_type: 'patient',
+      actor_id: 'user-456',
+      role: 'patient'
+    },
+    input: {
+      symptoms: 'I have a mild headache and feel tired',
+      patient_context: { age: 30 }
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Python (requests)
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/v1/ai/symptom-guidance",
+    headers={
+        "Content-Type": "application/json",
+        "X-Zam-AI-Key": "<your-api-key>"
+    },
+    json={
+        "actor_context": {
+            "actor_type": "patient",
+            "actor_id": "user-456",
+            "role": "patient"
+        },
+        "input": {
+            "symptoms": "I have a mild headache and feel tired",
+            "patient_context": {"age": 30}
+        }
+    }
+)
+
+print(response.json())
+```
+
+## Response
+
+### Normal Response
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "symptom_guidance",
+  "result": {
+    "answer": "Based on the symptoms described, this appears to be a non-urgent issue. However, if symptoms worsen or persist, please consult a healthcare provider.",
+    "triage_level": "non_urgent",
+    "diagnosis_provided": false
+  },
+  "safety": {
+    "risk_level": "low",
+    "action": "answered",
+    "requires_escalation": false,
+    "requires_human_review": false
+  },
+  "citations": [],
+  "confidence": {
+    "overall": 0.85,
+    "grounding": 0.88,
+    "retrieval": 0.82
+  },
+  "audit": {
+    "trace_id": "ai-trace-456",
+    "prompt_version": "symptom_guidance:v1",
+    "model_provider": "provider-name",
+    "model_version": "model-version"
+  }
+}
+```
+
+### Emergency Response
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "symptom_guidance",
+  "result": {
+    "answer": "Chest pain with shortness of breath can be urgent. Please seek emergency medical care now or contact local emergency services.",
+    "triage_level": "emergency",
+    "diagnosis_provided": false
+  },
+  "safety": {
+    "risk_level": "emergency",
+    "action": "escalated",
+    "requires_escalation": true,
+    "requires_human_review": false
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result.answer` | string | Guidance or triage instruction |
+| `result.triage_level` | string | `"emergency"`, `"urgent"`, `"non_urgent"`, or `"self_care"` |
+| `result.diagnosis_provided` | boolean | Always `false` — no diagnosis is ever given |
+| `safety.risk_level` | string | Risk classification |
+| `safety.action` | string | `"answered"`, `"escalated"`, or `"refused"` |
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Guidance generated successfully |
+| `400` | Validation error |
+| `401` | Missing or invalid API key |
+| `422` | Invalid request body |
+| `500` | Internal service error |
+
+## Notes
+
+<Tip>
+  Check `result.triage_level` to determine the urgency. For `"emergency"` or
+  `"urgent"` levels, prompt the patient to seek immediate care.
+</Tip>
+
+<Note>
+  The `safety.risk_level` and `safety.action` fields indicate how the system
+  handled the request. An `"escalated"` action means red-flag symptoms were
+  detected.
+</Note>
+
+### Safety Rules
+
+- Never provides a diagnosis
+- Escalates red-flag symptoms immediately (chest pain, stroke signs, severe bleeding, difficulty breathing)
+- Asks clarifying questions only when it does not delay urgent care
+- Refuses unsupported symptom queries
+
+## Related Endpoints
+
+- [Medical Q&A](/docs/endpoints/03_medical_qa) — citation-grounded medical answers
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how Zam AI handles medical triage and safety
+- [Security & Compliance](/docs/07_SECURITY_AND_COMPLIANCE) — medical safety and data protection

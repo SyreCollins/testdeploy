@@ -1,0 +1,236 @@
+---
+title: Drug Information
+description: Retrieve source-grounded medication information from approved medical references
+icon: pill
+---
+
+## Overview
+
+The Drug Information endpoint returns reliable medication information including uses, warnings, side effects, and other sections. Drug names are normalized to their generic form for consistent referencing.
+
+## Endpoint
+
+`POST /v1/ai/drug-info`
+
+## Authentication
+
+All requests require authentication via an internal API key. See the [Authentication](/docs/guides/authentication) guide.
+
+For common request fields like `caller`, `actor_context`, `authorization_context`, and `locale`, see the [Common Request Structure](/docs/guides/common-request-structure) guide.
+
+## When to Use
+
+Use this endpoint when you need to display medication information from approved medical references to patients or clinicians. It is ideal for formulary lookups, patient education, and clinical decision support.
+
+## Request Body
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "caller": {
+    "service": "zamda-backend",
+    "environment": "production"
+  },
+  "actor_context": {
+    "actor_type": "patient",
+    "actor_id": "user-789",
+    "role": "patient"
+  },
+  "authorization_context": {
+    "workflow": "drug_info",
+    "consent_flags": {
+      "use_patient_context": false,
+      "store_ai_trace": true
+    },
+    "context_scope": []
+  },
+  "locale": {
+    "language": "en",
+    "country": "NG"
+  },
+  "input": {
+    "drug_name": "Augmentin",
+    "requested_sections": ["uses", "warnings", "side_effects"],
+    "country": "NG"
+  }
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.drug_name` | string | Yes | Brand or generic drug name |
+| `input.requested_sections` | string[] | No | Specific sections to return (e.g. `uses`, `warnings`, `side_effects`, `dosage`). Returns all if omitted |
+| `input.country` | string | No | Country code for localized information (default: `"NG"`) |
+
+## Example Request
+
+```bash
+curl -X POST http://localhost:8000/v1/ai/drug-info \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <your-api-key>" \
+  -d '{
+    "actor_context": {
+      "actor_type": "patient",
+      "actor_id": "user-789",
+      "role": "patient"
+    },
+    "input": {
+      "drug_name": "Augmentin",
+      "requested_sections": ["uses", "warnings", "side_effects"]
+    }
+  }'
+```
+
+```javascript
+const response = await fetch('http://localhost:8000/v1/ai/drug-info', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Zam-AI-Key': '<your-api-key>'
+  },
+  body: JSON.stringify({
+    actor_context: {
+      actor_type: 'patient',
+      actor_id: 'user-789',
+      role: 'patient'
+    },
+    input: {
+      drug_name: 'Augmentin',
+      requested_sections: ['uses', 'warnings', 'side_effects']
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/v1/ai/drug-info",
+    headers={
+        "Content-Type": "application/json",
+        "X-Zam-AI-Key": "<your-api-key>"
+    },
+    json={
+        "actor_context": {
+            "actor_type": "patient",
+            "actor_id": "user-789",
+            "role": "patient"
+        },
+        "input": {
+            "drug_name": "Augmentin",
+            "requested_sections": ["uses", "warnings", "side_effects"]
+        }
+    }
+)
+
+print(response.json())
+```
+
+## Response
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "drug_info",
+  "result": {
+    "normalized_drug": {
+      "input_name": "Augmentin",
+      "generic_name": "amoxicillin/clavulanate",
+      "match_confidence": 0.94
+    },
+    "sections": {
+      "uses": "Augmentin (amoxicillin/clavulanate) is an antibiotic used to treat bacterial infections including sinusitis, pneumonia, ear infections, and urinary tract infections.",
+      "warnings": "Use with caution in patients with liver impairment or history of cholestatic jaundice. May cause allergic reactions in patients with penicillin allergy.",
+      "side_effects": "Common side effects include diarrhea, nausea, skin rash, and vomiting. Seek medical attention if severe allergic reaction occurs."
+    }
+  },
+  "safety": {
+    "risk_level": "low",
+    "action": "answered",
+    "requires_escalation": false,
+    "requires_human_review": false
+  },
+  "citations": [
+    {
+      "citation_id": "cit_1",
+      "text_content": "Amoxicillin/clavulanate is indicated for the treatment of bacterial infections including lower respiratory tract infections, sinusitis, and urinary tract infections.",
+      "score": 0.95,
+      "source_name": "Nigeria Essential Medicine List",
+      "source_version": "2020",
+      "source_trust_tier": 1,
+      "document_title": "Nigeria Essential Medicine List 2020",
+      "section_path": "Section 6: Anti-infective Medicines",
+      "page_number": 23
+    }
+  ],
+  "confidence": {
+    "overall": 0.88,
+    "grounding": 0.92,
+    "retrieval": 0.85
+  },
+  "audit": {
+    "trace_id": "ai-trace-789",
+    "prompt_version": "drug_info:v1",
+    "model_provider": "provider-name",
+    "model_version": "model-version"
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `result.normalized_drug.input_name` | string | The original drug name queried |
+| `result.normalized_drug.generic_name` | string | Normalized generic name |
+| `result.normalized_drug.match_confidence` | float | Confidence of the drug name match (0-1) |
+| `result.sections` | object | Map of section name to content text |
+| `safety.risk_level` | string | `"low"`, `"medium"`, or `"high"` |
+| `safety.action` | string | Action taken by the system |
+| `safety.requires_escalation` | boolean | Whether escalation is needed |
+| `safety.requires_human_review` | boolean | Whether human review is needed |
+| `citations` | object[] | Source-grounded citation evidence |
+| `confidence.overall` | float | Overall confidence score (0-1) |
+| `confidence.grounding` | float | Grounding confidence score (0-1) |
+| `confidence.retrieval` | float | Retrieval confidence score (0-1) |
+| `audit.trace_id` | string | Audit trace identifier |
+| `audit.prompt_version` | string | Prompt version used |
+| `audit.model_provider` | string | AI model provider |
+| `audit.model_version` | string | AI model version |
+
+## Example Response
+
+**(See the full JSON response above.)** The response includes the normalized drug name, requested content sections, safety metadata, source citations, and confidence scores.
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Drug information returned successfully |
+| `400` | Validation error (e.g. unknown drug name) |
+| `401` | Missing or invalid API key |
+| `422` | Invalid request body |
+| `500` | Internal service error |
+
+## Notes
+
+<Note>
+  All drug information is sourced from approved medical references. Drug names are
+  normalized to generic names for consistency. Missing or ambiguous drug names
+  return a normalization error.
+</Note>
+
+## Related Endpoints
+
+- [Interaction Check](/docs/endpoints/06_interaction_check) — Check for drug-drug interactions
+- [Contraindication Check](/docs/endpoints/07_contraindication_check) — Check for patient-specific contraindications
+- [Dosage Verification](/docs/endpoints/08_dosage_verify) — Verify dosage against reference ranges
+- [RAG Architecture](/docs/04_RAG_ARCHITECTURE) — medical source ingestion and retrieval for drug references
+- [Security & Compliance](/docs/07_SECURITY_AND_COMPLIANCE) — data protection and medical safety

@@ -1,0 +1,89 @@
+---
+title: Common Request Structure
+description: Fields shared across all Zam AI API requests
+icon: layers
+---
+
+Every AI endpoint accepts a standard set of top-level fields. These fields provide request tracing, caller identification, actor context, authorization, and locale information.
+
+## Standard Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `request_id` | string | No | Client-generated UUID for request tracing and debugging |
+| `caller` | object | No | Identifies the calling service and environment |
+| `actor_context` | object | Yes | Identifies the end user making the request |
+| `authorization_context` | object | No | Declares consent flags and context scope |
+| `locale` | object | No | Localization preferences |
+
+## Caller
+
+Identifies the originating service. Used for audit logging and debugging.
+
+```json
+"caller": {
+  "service": "zamda-backend",
+  "environment": "production"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `service` | string | Name of the calling service |
+| `environment` | string | Deployment environment (e.g. `production`, `staging`) |
+
+## Actor Context
+
+Identifies the end user on whose behalf the request is made.
+
+```json
+"actor_context": {
+  "actor_type": "patient",
+  "actor_id": "user-303",
+  "role": "patient"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `actor_type` | string | Yes | Type of end user: `patient`, `doctor`, or `pharmacy` |
+| `actor_id` | string | Yes | Your backend's identifier for this user |
+| `role` | string | Yes | Role of the end user |
+
+## Authorization Context
+
+Declares what the application is authorized to do with patient data on behalf of the user.
+
+```json
+"authorization_context": {
+  "workflow": "medical_qa",
+  "consent_flags": {
+    "use_patient_context": true,
+    "store_ai_trace": true
+  },
+  "context_scope": ["age", "allergies", "current_medications"]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `workflow` | string | The workflow being invoked |
+| `consent_flags.use_patient_context` | boolean | Whether patient context was collected with consent |
+| `consent_flags.store_ai_trace` | boolean | Whether the user consented to audit tracing |
+| `context_scope` | string[] | Patient data fields the user consented to share |
+
+## Locale
+
+Specifies language and regional preferences for localized responses.
+
+```json
+"locale": {
+  "language": "en",
+  "country": "NG"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `language` | string | ISO 639-1 language code (default: `en`) |
+| `country` | string | ISO 3166-1 alpha-2 country code (default: `NG`) |

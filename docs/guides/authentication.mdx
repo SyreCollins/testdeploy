@@ -1,0 +1,37 @@
+---
+title: Authentication
+description: Learn how to authenticate requests to the Zam AI API
+icon: lock
+---
+
+All API requests to Zam AI endpoints require authentication via an internal API key.
+
+## API Key Authentication
+
+Include your API key in the `X-Zam-AI-Key` header on every request:
+
+```bash
+curl -H "X-Zam-AI-Key: <your-api-key>" https://api.zam.ai/v1/health
+```
+
+### Key Types
+
+| Type | Permission Level | Usage |
+|------|-----------------|-------|
+| Standard | Access to AI and retrieval endpoints | General application use |
+| Admin | Key management and evaluation endpoints | Internal tooling and administration |
+
+### Obtaining a Key
+
+Contact the Zam AI platform team to provision an API key for your service. Keys include a human-readable label for identification and may include an expiration date.
+
+### Security Best Practices
+
+<Note>
+  Never expose your API key in client-side code, version control, or logs. Rotate keys
+  regularly and revoke compromised keys immediately.
+</Note>
+
+## Health and Readiness Endpoints
+
+The `GET /v1/health` and `GET /v1/ready` endpoints do not require authentication. They're designed for load balancers and monitoring systems.

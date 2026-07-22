@@ -1,0 +1,98 @@
+---
+title: Readiness Check
+description: Determine if the Zam AI service is ready to accept traffic
+icon: activity
+---
+
+## Overview
+
+Returns the readiness status of the service and its dependencies. Used by load balancers and orchestrators to determine if the service is ready to accept traffic.
+
+## Endpoint
+
+```
+GET /v1/ready
+```
+
+## Authentication
+
+See the [Authentication](/docs/guides/authentication) guide.
+
+## When to Use
+
+Call this endpoint to verify that the service and all critical dependencies — vector store, model gateway, metadata store — are operational before routing traffic.
+
+## Request
+
+No request body. No query parameters.
+
+## Example Request
+
+### cURL
+
+```bash
+curl http://localhost:8000/v1/ready
+```
+
+### JavaScript (fetch)
+
+```javascript
+fetch('http://localhost:8000/v1/ready')
+  .then(res => res.json())
+  .then(data => console.log(data));
+```
+
+### Python (requests)
+
+```python
+import requests
+
+response = requests.get("http://localhost:8000/v1/ready")
+print(response.json())
+```
+
+## Response
+
+```json
+{
+  "status": "ready",
+  "dependencies": {
+    "api": { "status": "ok" },
+    "metadata_store": { "status": "ok" },
+    "vector_store": { "status": "ok" },
+    "redis": { "status": "ok" },
+    "model_gateway": { "status": "ok" }
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"ready"` if all required dependencies are healthy |
+| `dependencies` | object | Map of dependency name to status object |
+
+Each dependency has:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"ok"`, `"degraded"`, or `"unavailable"` |
+| `detail` | string | Optional detail message |
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Service is ready to accept traffic |
+| `503` | One or more critical dependencies are unavailable |
+
+## Notes
+
+<Note>
+  While the Health Check endpoint (`GET /v1/health`) only verifies the process is
+  alive, this endpoint checks each downstream dependency. A `503` response means the
+  service should be taken out of rotation.
+</Note>
+
+## Related Endpoints
+
+- [Health Check](/docs/endpoints/01_health) — process-level health check

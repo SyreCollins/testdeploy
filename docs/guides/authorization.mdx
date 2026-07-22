@@ -1,0 +1,37 @@
+---
+title: Authorization & Consent
+description: How authorization and patient consent work in Zam AI
+icon: shield
+---
+
+Zam AI operates on a consent-based authorization model. Every request that uses patient data must declare what data is being accessed and why.
+
+## Consent Model
+
+Applications must obtain user consent before sending patient data to Zam AI. The `authorization_context` object in every request declares:
+
+- Which workflow is being invoked
+- Whether patient context was collected with consent
+- Whether the user consented to audit tracing
+- Which specific patient data fields are authorized
+
+## Context Scope
+
+The `context_scope` field lists the patient data fields the user has consented to share:
+
+| Scope Value | Description |
+|-------------|-------------|
+| `age` | Patient age |
+| `sex` | Patient sex |
+| `known_conditions` | Known medical conditions |
+| `allergies` | Known allergies |
+| `current_medications` | Current medications |
+
+<Warning>
+  Only include patient data that the user has explicitly consented to share. Sending
+  data outside the declared `context_scope` violates the consent contract.
+</Warning>
+
+## Audit Tracing
+
+When `store_ai_trace` is `true`, the request is recorded in the audit log with full event details. This powers compliance, debugging, and monitoring. See the [Audit Traces](/docs/endpoints/12_audit_traces) endpoint documentation for details.

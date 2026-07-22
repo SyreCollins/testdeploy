@@ -1,0 +1,278 @@
+---
+title: Medical Q&A
+description: Answer medical questions using verified evidence from approved sources
+icon: message-square
+---
+
+## Overview
+
+Provides grounded, source-backed answers to patient medical questions. Every medical claim must cite an approved source. The endpoint refuses to answer if no reliable evidence is found.
+
+## Endpoint
+
+```
+POST /v1/ai/medical-qa
+```
+
+## Authentication
+
+Requires a valid internal API key via the `X-Zam-AI-Key` header. See the [Authentication](/docs/guides/authentication) guide.
+
+## When to Use
+
+Call this endpoint when a patient asks a specific medical question and you need a citation-grounded answer. Ideal for patient portals, health information tools, and clinical decision support interfaces.
+
+<Warning>
+  This endpoint is not a diagnostic tool. It provides informational answers based
+  on approved medical sources. Always direct patients to consult a healthcare
+  provider for personal medical advice.
+</Warning>
+
+## Request Body
+
+The request body includes standard fields for tracing, caller identification, actor context, authorization, and locale. See the [Common Request Structure](/docs/guides/common-request-structure) guide for details on those fields.
+
+```json
+{
+  "input": {
+    "question": "Can I take ibuprofen if I have stomach ulcers?",
+    "patient_context": {
+      "age": 42,
+      "sex": "female",
+      "known_conditions": ["peptic ulcer disease"],
+      "allergies": [],
+      "current_medications": []
+    },
+    "conversation_context": {
+      "conversation_id": "conv_123",
+      "recent_messages": []
+    }
+  }
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `input.question` | string | Yes | The medical question to answer |
+| `input.patient_context.age` | int | No | Patient age |
+| `input.patient_context.sex` | string | No | Patient sex |
+| `input.patient_context.known_conditions` | string[] | No | List of known medical conditions |
+| `input.patient_context.allergies` | string[] | No | List of known allergies |
+| `input.patient_context.current_medications` | string[] | No | List of current medications |
+| `input.conversation_context.conversation_id` | string | No | Conversation ID for multi-turn context |
+| `input.conversation_context.recent_messages` | object[] | No | Recent messages for context |
+
+## Example Request
+
+### cURL
+
+```bash
+curl -X POST http://localhost:8000/v1/ai/medical-qa \
+  -H "Content-Type: application/json" \
+  -H "X-Zam-AI-Key: <your-api-key>" \
+  -d '{
+    "actor_context": {
+      "actor_type": "patient",
+      "actor_id": "user-123",
+      "role": "patient"
+    },
+    "input": {
+      "question": "Can I take ibuprofen if I have stomach ulcers?",
+      "patient_context": {
+        "age": 42,
+        "known_conditions": ["peptic ulcer disease"]
+      }
+    }
+  }'
+```
+
+### JavaScript (fetch)
+
+```javascript
+const response = await fetch('http://localhost:8000/v1/ai/medical-qa', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Zam-AI-Key': '<your-api-key>'
+  },
+  body: JSON.stringify({
+    actor_context: {
+      actor_type: 'patient',
+      actor_id: 'user-123',
+      role: 'patient'
+    },
+    input: {
+      question: 'Can I take ibuprofen if I have stomach ulcers?',
+      patient_context: {
+        age: 42,
+        known_conditions: ['peptic ulcer disease']
+      }
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+### Python (requests)
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8000/v1/ai/medical-qa",
+    headers={
+        "Content-Type": "application/json",
+        "X-Zam-AI-Key": "<your-api-key>"
+    },
+    json={
+        "actor_context": {
+            "actor_type": "patient",
+            "actor_id": "user-123",
+            "role": "patient"
+        },
+        "input": {
+            "question": "Can I take ibuprofen if I have stomach ulcers?",
+            "patient_context": {
+                "age": 42,
+                "known_conditions": ["peptic ulcer disease"]
+            }
+        }
+    }
+)
+
+print(response.json())
+```
+
+## Response
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "success",
+  "workflow": "medical_qa",
+  "result": {
+    "answer": "Ibuprofen may not be appropriate for some people with a history of stomach ulcers. Please speak with a clinician or pharmacist before taking it, especially if you have active ulcer symptoms or are taking other medicines that increase bleeding risk.",
+    "missing_context": [],
+    "follow_up_questions": [],
+    "medical_claims": [
+      {
+        "claim": "Ibuprofen can increase gastrointestinal bleeding or ulcer risk in susceptible patients.",
+        "citation_ids": ["cit_1"]
+      }
+    ]
+  },
+  "safety": {
+    "risk_level": "medium",
+    "action": "answered",
+    "requires_escalation": false,
+    "requires_human_review": false
+  },
+  "citations": [
+    {
+      "citation_id": "cit_1",
+      "text_content": "NSAIDs including ibuprofen may increase risk of gastrointestinal bleeding in patients with a history of peptic ulcer disease.",
+      "score": 0.94,
+      "source_name": "Nigeria Essential Medicine List",
+      "source_version": "2020",
+      "source_trust_tier": 1,
+      "document_title": "Nigeria Essential Medicine List 2020",
+      "section_path": "Chapter 2: Analgesics",
+      "page_number": 45
+    }
+  ],
+  "confidence": {
+    "overall": 0.82,
+    "grounding": 0.9,
+    "retrieval": 0.86
+  },
+  "audit": {
+    "trace_id": "ai-trace-123",
+    "prompt_version": "medical_qa:v1",
+    "model_provider": "provider-name",
+    "model_version": "model-version"
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `request_id` | string | Echoed from request for tracing |
+| `status` | string | `"success"` or `"error"` |
+| `workflow` | string | Workflow identifier |
+| `result.answer` | string | The grounded medical answer |
+| `result.missing_context` | string[] | Context fields that would improve the answer |
+| `result.follow_up_questions` | string[] | Suggested follow-up questions |
+| `result.medical_claims` | object[] | Individual medical claims with citations |
+| `safety.risk_level` | string | `"low"`, `"medium"`, `"high"`, or `"emergency"` |
+| `safety.action` | string | `"answered"`, `"refused"`, or `"escalated"` |
+| `citations` | object[] | Source citations for claims made |
+| `confidence.overall` | float | Overall confidence score (0-1) |
+| `confidence.grounding` | float | Grounding confidence score (0-1) |
+| `confidence.retrieval` | float | Retrieval confidence score (0-1) |
+| `audit.trace_id` | string | Audit trace identifier |
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `200` | Answer generated successfully |
+| `400` | Validation error |
+| `401` | Missing or invalid API key |
+| `403` | Unauthorized caller scope |
+| `422` | Invalid request body |
+| `500` | Internal service error |
+
+### Error Response Body
+
+```json
+{
+  "request_id": "7d9827b8-9f42-4f4f-8e4a-3c4b4fd973a1",
+  "status": "error",
+  "error": {
+    "code": "retrieval_no_evidence",
+    "message": "No reliable medical evidence was found for this request.",
+    "retryable": false,
+    "details": {
+      "workflow": "medical_qa"
+    }
+  },
+  "safety": {
+    "action": "refused",
+    "requires_escalation": false
+  }
+}
+```
+
+## Notes
+
+<Tip>
+  The `missing_context` field in the response tells you what additional patient
+  information would improve the answer. Consider collecting these fields and
+  retrying.
+</Tip>
+
+<Note>
+  Each `medical_claim` maps to one or more `citation_ids`. The full citation
+  details — including the source document, section, page number, and trust tier
+  — are provided in the `citations` array.
+</Note>
+
+### Safety Rules
+
+- Must retrieve approved sources before answering
+- Every medical claim must cite a source
+- Refuses if no reliable evidence is found
+- Escalates emergency symptoms immediately
+
+## Related Endpoints
+
+- [Symptom Guidance](/docs/endpoints/04_symptom_guidance) — non-diagnostic symptom triage
+- [AI Architecture](/docs/03_AI_ARCHITECTURE) — how Zam AI transforms requests into grounded medical answers
+- [RAG Architecture](/docs/04_RAG_ARCHITECTURE) — retrieval-augmented generation and source grounding
+- [Prompt Architecture](/docs/03.1_PROMPT_ARCHITECTURE) — prompt design and versioning
