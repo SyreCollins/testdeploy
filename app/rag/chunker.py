@@ -7,7 +7,7 @@ from app.rag.normalizer import (
     extract_medications,
     normalize_dosage_units,
 )
-from app.rag.schemas import DocumentChunk
+from app.db.models.rag import DocumentChunk
 
 logger = logging.getLogger("zam-ai-core-api.chunker")
 

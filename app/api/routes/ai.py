@@ -34,6 +34,10 @@ def _orch(request: Request) -> ConversationOrchestrator:
     return request.app.state.orchestrator
 
 
+def _org_id(request: Request) -> int | None:
+    return getattr(request.state, "organization_id", None)
+
+
 @router.post(
     "/ai/medical-qa",
     response_model=MedicalQAResponse | ErrorResponse,
@@ -48,6 +52,7 @@ async def medical_qa(request: Request, body: MedicalQARequest) -> MedicalQARespo
         allergies=patient.allergies,
         current_medications=patient.current_medications,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.medical_qa(result, body)
 
@@ -67,6 +72,7 @@ async def interaction_check(
         known_conditions=patient.known_conditions,
         current_medications=patient.current_medications,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.interaction_check(result, body)
 
@@ -80,6 +86,7 @@ async def drug_info(request: Request, body: DrugInfoRequest) -> DrugInfoResponse
         drug_name=body.input.drug_name,
         requested_sections=body.input.requested_sections,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.drug_info(result, body)
 
@@ -96,6 +103,7 @@ async def symptom_guidance(request: Request, body: SymptomGuidanceRequest) -> Sy
         patient_sex=patient.sex,
         known_conditions=patient.known_conditions,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.symptom_guidance(result, body)
 
@@ -116,6 +124,7 @@ async def contraindication_check(
         allergies=patient.allergies,
         current_medications=patient.current_medications,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.contraindication_check(result, body)
 
@@ -139,6 +148,7 @@ async def dosage_verify(
         known_conditions=patient.known_conditions,
         current_medications=patient.current_medications,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.dosage_verify(result, body)
 
@@ -157,6 +167,7 @@ async def prescription_explain(
         known_conditions=patient.known_conditions,
         current_medications=patient.current_medications,
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.prescription_explain(result, body)
 
@@ -180,5 +191,6 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse | ErrorRespo
             "current_medications": patient.current_medications,
         },
         request_id=body.request_id,
+        organization_id=_org_id(request),
     )
     return composer.chat(result, body.request_id, intent.value, confidence)

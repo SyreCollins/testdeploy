@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 pytest_plugins = ("pytest_asyncio",)
 
 from app.core.config import Settings  # noqa: E402
+from app.db.engine import reset_engine  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 _TEST_API_KEY = "test-key-123"
@@ -19,8 +20,9 @@ def _cleanup():
         if k.startswith("ZAM_AI_")
     }
     from app.api.keys.service import store as api_key_store
-    api_key_store._keys.clear()
-    api_key_store._bootstrapped = False
+    api_key_store._engine = None
+    api_key_store._rate_cache.clear()
+    reset_engine()
     yield
     for k, v in saved_env.items():
         if v is not None:

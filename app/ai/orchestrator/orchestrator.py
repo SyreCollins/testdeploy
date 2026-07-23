@@ -196,12 +196,13 @@ class ConversationOrchestrator:
         current_medications: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
         self.audit.start_trace(req_id, "medical_qa", {
             "question": question,
             "patient_age": patient_age,
-        })
+        }, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=question,
@@ -310,9 +311,10 @@ class ConversationOrchestrator:
         known_conditions: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
-        self.audit.start_trace(req_id, "symptom_guidance", {"symptoms": symptoms})
+        self.audit.start_trace(req_id, "symptom_guidance", {"symptoms": symptoms}, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=symptoms,
@@ -399,9 +401,10 @@ class ConversationOrchestrator:
         requested_sections: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
-        self.audit.start_trace(req_id, "drug_info", {"drug_name": drug_name})
+        self.audit.start_trace(req_id, "drug_info", {"drug_name": drug_name}, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=drug_name,
@@ -488,12 +491,13 @@ class ConversationOrchestrator:
         current_medications: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
         drug_names = [m.get("name", "") for m in medications]
         self.audit.start_trace(req_id, "interaction_check", {
             "medications": drug_names,
-        })
+        }, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=" ".join(drug_names),
@@ -595,12 +599,13 @@ class ConversationOrchestrator:
         current_medications: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
         drug_names = [m.get("name", "") for m in medications]
         self.audit.start_trace(req_id, "contraindication_check", {
             "medications": drug_names,
-        })
+        }, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=" ".join(drug_names),
@@ -699,10 +704,11 @@ class ConversationOrchestrator:
         current_medications: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
         drug_name = medication.get("name", "")
-        self.audit.start_trace(req_id, "dosage_verify", {"medication": drug_name})
+        self.audit.start_trace(req_id, "dosage_verify", {"medication": drug_name}, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=drug_name,
@@ -794,11 +800,12 @@ class ConversationOrchestrator:
         current_medications: list[str] | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         req_id = request_id or str(uuid.uuid4())
         self.audit.start_trace(req_id, "prescription_explain", {
             "prescription_length": len(prescription_text),
-        })
+        }, organization_id=organization_id)
 
         safety_ctx = self._build_safety_context(
             query=prescription_text[:500],
@@ -888,6 +895,7 @@ class ConversationOrchestrator:
         patient_context: dict | None = None,
         conversation_state: ConversationState | None = None,
         request_id: str | None = None,
+        organization_id: int | None = None,
     ) -> WorkflowResult:
         if intent is None or intent == Intent.UNKNOWN:
             intent, _ = self.classify_intent(message)
@@ -904,6 +912,7 @@ class ConversationOrchestrator:
                 current_medications=patient.get("current_medications"),
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.SYMPTOM_GUIDANCE:
@@ -914,6 +923,7 @@ class ConversationOrchestrator:
                 known_conditions=patient.get("known_conditions"),
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.DRUG_INFO:
@@ -921,6 +931,7 @@ class ConversationOrchestrator:
                 drug_name=message,
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.INTERACTION_CHECK:
@@ -932,6 +943,7 @@ class ConversationOrchestrator:
                 current_medications=patient.get("current_medications"),
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.CONTRAINDICATION_CHECK:
@@ -943,6 +955,7 @@ class ConversationOrchestrator:
                 current_medications=patient.get("current_medications"),
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.DOSAGE_VERIFY:
@@ -953,6 +966,7 @@ class ConversationOrchestrator:
                 current_medications=patient.get("current_medications"),
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.PRESCRIPTION_EXPLAIN:
@@ -963,6 +977,7 @@ class ConversationOrchestrator:
                 current_medications=patient.get("current_medications"),
                 conversation_state=conversation_state,
                 request_id=request_id,
+                organization_id=organization_id,
             )
 
         if intent == Intent.EMERGENCY:

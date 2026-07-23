@@ -1,6 +1,6 @@
 import logging
 
-from app.rag.schemas import DocumentChunk
+from app.db.models.rag import DocumentChunk
 from app.rag.vector_store.base import BaseVectorStore
 
 logger = logging.getLogger("zam-ai-core-api.memory-vector-store")

@@ -8,6 +8,7 @@ from app.ai.gateway import get_model_provider
 from app.ai.orchestrator import ConversationOrchestrator
 from app.ai.prompts import PromptManager
 from app.api.keys.service import store as api_key_store
+from app.db.engine import init_db as init_platform_db
 from app.api.routes.ai import router as ai_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.health import router as health_router
@@ -43,6 +44,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.logger = logging.getLogger(settings.service_name)
 
+    db_engine = init_platform_db(settings.database_url)
+    api_key_store._engine = db_engine
+
+    if settings.internal_api_keys_list:
+        api_key_store.bootstrap_static_keys(settings.internal_api_keys_list)
+
     app.state.logger.info(
         "app_starting",
         extra={
@@ -58,8 +65,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         },
     )
 
-    if settings.internal_api_keys_list:
-        api_key_store.bootstrap_static_keys(settings.internal_api_keys_list)
+    app.state.logger.info(f"Platform DB initialized at: {settings.database_url}")
+    app.state.db_engine = db_engine
 
     registry = RagRegistry(database_url=settings.database_url)
     registry.init_db()
@@ -73,7 +80,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.state.prompt_manager = PromptManager()
-    app.state.audit_writer = AuditTraceWriter()
+    app.state.audit_writer = AuditTraceWriter(database_url=settings.database_url)
 
     app.state.retrieval_service = RetrievalService(
         registry=registry,

@@ -10,7 +10,7 @@ from llama_index.core.vector_stores import (
 )
 from llama_index.vector_stores.pinecone import PineconeVectorStore as LiPineconeVectorStore
 
-from app.rag.schemas import DocumentChunk
+from app.db.models.rag import DocumentChunk
 from app.rag.vector_store.base import BaseVectorStore
 
 logger = logging.getLogger("zam-ai-core-api.pinecone-vector-store")

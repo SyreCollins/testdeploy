@@ -1,10 +1,11 @@
 import logging
 from datetime import UTC, datetime
 
+from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import get_settings
-from app.rag.schemas import DocumentChunk, MedicalSource, SourceDocument
+from app.db.models.rag import DocumentChunk, MedicalSource, SourceDocument
 
 logger = logging.getLogger("zam-ai-core-api.rag-registry")
 
@@ -13,13 +14,15 @@ class RagRegistry:
     def __init__(self, database_url: str | None = None) -> None:
         settings = get_settings()
         self.database_url = database_url or settings.database_url
-        
-        # SQLite specific configuration for thread safety
+
         connect_args = {}
+        pool_kwargs = {}
         if self.database_url.startswith("sqlite"):
             connect_args = {"check_same_thread": False}
-            
-        self.engine = create_engine(self.database_url, connect_args=connect_args)
+            if ":memory:" in self.database_url:
+                pool_kwargs["poolclass"] = StaticPool
+
+        self.engine = create_engine(self.database_url, connect_args=connect_args, **pool_kwargs)
 
     def init_db(self) -> None:
         """Create tables in the database if they don't exist"""

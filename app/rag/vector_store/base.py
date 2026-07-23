@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.rag.schemas import DocumentChunk
+from app.db.models.rag import DocumentChunk
 
 
 class BaseVectorStore(ABC):

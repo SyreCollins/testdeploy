@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from starlette import status
 
 from app.api.schemas.audit import (
@@ -18,9 +18,20 @@ router = APIRouter()
     "/audit/traces",
     response_model=ListAuditTracesResponse,
 )
-def list_traces(request: Request, limit: int = 50) -> ListAuditTracesResponse:
+def list_traces(
+    request: Request,
+    limit: int = Query(default=50, le=500),
+    organization_id: int | None = Query(default=None, alias="org_id"),
+    from_date: str | None = Query(default=None, alias="from"),
+    to_date: str | None = Query(default=None, alias="to"),
+) -> ListAuditTracesResponse:
     writer = request.app.state.audit_writer
-    traces = writer.get_recent_traces(limit)
+    traces = writer.get_recent_traces(
+        limit=limit,
+        organization_id=organization_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
     return ListAuditTracesResponse(
         traces=[
             AuditTraceInfo(
