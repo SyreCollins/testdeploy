@@ -60,6 +60,18 @@ export const ENDPOINTS = {
     KEY_ROTATE: "/v1/admin/keys/{key_id}/rotate",
     KEY_REVOKE: "/v1/admin/keys/{key_id}/revoke",
     EVALUATIONS_RUN: "/v1/admin/evaluations/run",
+
+    ORGS: "/v1/admin/orgs",
+    ORG_DETAIL: "/v1/admin/orgs/{org_id}",
+    ORG_USERS: "/v1/admin/orgs/{org_id}/users",
+    ORG_PROJECTS: "/v1/admin/orgs/{org_id}/projects",
+
+    USERS: "/v1/admin/users",
+
+    AUDIT_TRACES: "/v1/admin/audit/traces",
+    AUDIT_TRACE: "/v1/admin/audit/traces/{trace_id}",
+
+    USAGE: "/v1/admin/usage",
   } as const,
 } as const;
 
