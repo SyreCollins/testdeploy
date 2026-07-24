@@ -3,7 +3,7 @@ import uuid
 import pytest
 
 from app.ai.audit import AuditTrace, AuditTraceWriter
-from app.db.engine import get_engine, init_db, reset_engine
+from app.db.engine import init_db, reset_engine
 
 TEST_DB_URL = "sqlite://"
 

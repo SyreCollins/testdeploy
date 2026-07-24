@@ -5,7 +5,25 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-## State (~222 tests pass, 0 lint errors, CI/CD active)
+## State (~253 tests pass, 0 lint errors)
+
+### ✅ Completed (this session — 2026-07-24)
+
+| Area | Details |
+|---|---|
+| **`_org_id()` fallback for internal API keys** | `_org_id()` in `app/api/routes/ai.py` only read `request.state.organization_id` (set by ClerkAuthMiddleware). Internal API key requests set `request.state.org_id` instead — so `organization_id` was never passed to audit traces for internal-key-authed requests. Now falls back to `org_id` matching the `UsageTracker` pattern. |
+
+### ✅ Completed (this session — 2026-07-23)
+
+| Area | Details |
+|---|---|
+| **Phase 4 — Clerk auth, orgs, projects, API key CRUD** | New `app/api/routes/auth.py` — webhook handler for Clerk user/org sync (HMAC SHA-256 verified). New `app/api/routes/organizations.py` — org CRUD, project CRUD, org-scoped API key CRUD (create, list, rotate, revoke), project-scoped API key CRUD. New `app/core/middleware/auth.py` — `ClerkAuthMiddleware` validates Bearer JWT against Clerk JWKS, sets `clerk_user_id`, `organization_id` on state; skips if `api_key_entry` already present (internal key fallback). New `app/db/models/platform.py` — `Organization` (plan-based tiers), `Project`, `ApiKey` (DB-backed with SHA-256 hashing), `User` tables. DB-backed `ApiKeyStore` replaces in-memory store; `bootstrap_static_keys` seeds from `ZAM_AI_INTERNAL_API_KEYS`. `InternalApiKeyMiddleware` re‑ordered as outermost middleware so internal key check runs first, letting `ClerkAuth` skip JWT when `api_key_entry` is set. |
+| **Phase 5 — Rate limiting, usage tracking** | New `app/core/middleware/rate_limit.py` — plan-based rate limiting via `Settings.get_plan_rate_limit()`. New `app/core/middleware/usage_tracker.py` — `UsageTracker` records per-request `UsageRecord` rows (org, api_key, endpoint, prompt/completion tokens). Rate limit window moved to in-memory `_rate_cache` dict (DB-backed columns removed from model to avoid schema drift with `checkfirst=True`). |
+| **Phase 4–5 test suite** | `tests/test_phase4.py` — webhook auth, org creation, project CRUD, org/project-scoped API key CRUD, audit exposure. `tests/test_phase5.py` — rate limit exceeding, per-key independence, pro-plan higher limits, usage record persistence. All 31 phase4+phase5 tests pass. |
+| **Lint sweep** | Fixed all 27 ruff violations: F401 unused imports (engine.get_engine, get_settings, unused imports across 6 files), E501 line length in organizations.py, SIM114 `match` bare-name capture pattern in config.py, unused `resp` in test_phase5.py. |
+| **Middleware ordering fix** | `Starlette.add_middleware` wraps outward — last added = outermost = runs first. Re‑ordered so `InternalApiKeyMiddleware` is outermost (runs before `ClerkAuth`), enabling internal-key-first auth. Fixed double‑prefix bug (`/v1/v1/auth/webhook` and `/v1/v1/organizations/me`) by removing redundant `prefix="/v1"` from `include_router` calls for routers that already self‑prefix. |
+| **State attribute alignment** | `_get_org` in `organizations.py` was checking `request.state.organization_id` but middleware set `request.state.org_id`. Standardised all 12 references to `org_id`. `validate_key` was returning `org_id: getattr(entry, 'org_id', None)` — model field is `organization_id`. `UsageTracker` checked `organization_id`, now falls back to `org_id`. |
+| **DB schema drift fixed** | `rate_limit_window`/`rate_limit_count` columns removed from `ApiKey` model. Rate limit tracking moved to in-memory `ApiKeyStore._rate_cache` dict. `SQLModel.create_all(checkfirst=True)` does not alter existing tables, so adding DB columns was silently ignored — the in-memory approach avoids the problem entirely. |
 
 ### ✅ Completed (this session — 2026-07-22)
 
@@ -27,17 +45,6 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **SaaS platform plan** | `docs/saas-platform-plan.md` — full 5-phase plan: Neon migration, Clerk auth, orgs/users/api_keys tables, audit persistence, usage tracking, rate limiting. Decisions: Neon DB, Clerk auth (GitHub/Google/magic link), "Both" access model (internal key + direct partner keys), Full v1 scope |
 | **Handoff cleanup** | Deduplicated repeated sections in this file |
 
-### ✅ Completed (this session — 2026-07-20)
-
-| Area | Details |
-|---|---|
-| **Detailed request logging** | New `RequestLoggingMiddleware` logs full request body, headers, response body, latency for every request |
-| **Startup env audit log** | `main.py` now logs which env vars are present at startup |
-| **Fixed Dockerfile** | Added `COPY prompts ./prompts` — prompts were missing in Docker image |
-| **Cleaner claim formatting** | `CitationEngine._clean_claim()` normalizes newlines/whitespace in claim text |
-| **Conversational tone** | Updated `system.md` and `medication_info.md` prompts to be warm, empathetic, natural |
-| **Follow-up questions** | `_extract_follow_up_questions()` parses model response, strips from answer text, populates `follow_up_questions` field |
-
 ### ✅ Completed (prior sessions)
 
 | Area | Details |
@@ -48,8 +55,8 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Tier 2 — Modules** | Citation Engine, Grounding Verifier, Audit Trace Writer |
 | **Tier 3 — Safety** | Safety engine with 4 rule checks (emergency, unsafe request, prompt injection, retrieval required, high risk). 45 tests |
 | **Prompt templates** | 13 `.md` files (6 base + 7 workflow) |
-| **API key management** | CRUD endpoints for API keys — SHA-256 hashed, in-memory store |
-| **Rate limiting middleware** | 60 req/60s per key, docs/health exempt |
+| **API key management** | CRUD endpoints for API keys — SHA-256 hashed, in-memory store (legacy, replaced by DB store) |
+| **Rate limiting middleware** | 60 req/60s per key, docs/health exempt (legacy, replaced by plan-based) |
 | **Audit query endpoints** | `GET /v1/audit/traces` + `GET /v1/audit/traces/{trace_id}` |
 | **`/v1/ai/chat` endpoint** | Full chat endpoint with intent classification + routing |
 | **Parallel multi-drug retrieval** | `asyncio.gather()` in interaction + contraindication checks |
@@ -67,21 +74,19 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - Ingestion in `app/rag/service.py` (not standalone `app/ingest/`)
 - 0 TODO/FIXME/HACK/XXX comments in codebase
 - `.env` has real keys for Jina, Pinecone, Voyage, and Claude
-- Arch docs define 8 phases; Phases 2-3 complete, Phases 4-8 not started
 - SaaS model (ADR 6): Partners route through main backend. Zam AI called with single internal key. New plan adds direct partner keys as second tier.
+- **Middleware ordering**: Starlette `add_middleware` wraps outward — last added runs first. `InternalApiKeyMiddleware` must be outermost so internal key is validated before `ClerkAuthMiddleware` runs. Current order (outermost → innermost): RequestLogging → RequestId → InternalApiKey → RateLimit → ClerkAuth → UsageTracker → Route.
+- **DB schema drift on SQLite**: `SQLModel.metadata.create_all(checkfirst=True)` does not `ALTER TABLE` — new columns are silently ignored on existing tables. Always create tables from scratch in tests (`reset_engine()` drops all) or use explicit migrations.
+- **State attribute convention**: `InternalApiKeyMiddleware` sets `request.state.org_id`; `ClerkAuthMiddleware` sets `request.state.organization_id`. Route helpers should fall back: `getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)` (see `_org_id()` in `ai.py` and `UsageTracker`).
+- **Rate limit persistence**: Rate limit windows are ephemeral (in-memory `_rate_cache` dict). Lost on restart — acceptable for v1, consider Redis for production.
 
 ### ❌ Remaining Gaps
 
 | Priority | Area | What to do |
 |---|---|---|
-| **HIGH** | Pass `organization_id` through to audit traces | `actor_context.organization_id` exists in request schema but audit writer doesn't log it. Needed for billing |
-| **HIGH** | Persist audit traces to database | Currently in-memory `OrderedDict` (gone on restart). Add `audit_traces` table + query by org/date |
 | **HIGH** | Add `X-Caller-Organization` header passthrough | Let backend tag which org each request is for |
-| **HIGH** | Move API keys to DB | Replace in-memory `ApiKeyStore` with `api_keys` table |
 | **HIGH** | Neon migration | SQLite → PostgreSQL, add `psycopg` dep, update `database_url`, remove `check_same_thread` |
-| **MEDIUM** | Clerk auth integration | Webhook sync for users/orgs, JWT validation middleware |
-| **MEDIUM** | Usage tracking | `usage_records` table populated per-request, rate limiting from DB |
-| **MEDIUM** | SaaS org/usage endpoints | `GET /v1/organizations/me`, `GET /v1/organizations/me/usage`, per-org key management |
+| **HIGH** | Commit uncommitted work | Phase 4–5 files (auth.py, organizations.py, usage_tracker.py, etc.) plus test files are untracked/unstaged. All lint-clean and test-green — ready to commit. |
 | **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` |
 | **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — currently placeholder |
 | **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — currently placeholder |

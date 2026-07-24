@@ -2,12 +2,12 @@ import hashlib
 import logging
 from typing import Any
 
+from app.db.models.rag import DocumentChunk
 from app.rag.normalizer import (
     clean_whitespace,
     extract_medications,
     normalize_dosage_units,
 )
-from app.db.models.rag import DocumentChunk
 
 logger = logging.getLogger("zam-ai-core-api.chunker")
 

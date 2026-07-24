@@ -366,6 +366,7 @@ class ChatRequest(BaseModel):
     caller: CallerInfo = Field(default_factory=CallerInfo)
     actor_context: ActorContext
     authorization_context: AuthorizationContext = Field(default_factory=AuthorizationContext)
+    workflow: str = "chat"
     locale: Locale = Field(default_factory=Locale)
     input: ChatInput
 

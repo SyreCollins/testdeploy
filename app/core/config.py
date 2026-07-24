@@ -2,6 +2,10 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PLAN_FREE = "free"
+PLAN_PRO = "pro"
+PLAN_ENTERPRISE = "enterprise"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -43,6 +47,15 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = None
     qdrant_collection_name: str = "zam-ai"
 
+    clerk_secret_key: str = ""
+    clerk_publishable_key: str = ""
+    clerk_webhook_secret: str = ""
+
+    free_plan_max_keys: int = 3
+    free_plan_rate_limit: int = 20
+    pro_plan_rate_limit: int = 100
+    enterprise_plan_rate_limit: int = 500
+
     @property
     def internal_api_keys_list(self) -> list[str]:
         if not self.internal_api_keys:
@@ -52,6 +65,28 @@ class Settings(BaseSettings):
     @property
     def is_local(self) -> bool:
         return self.environment.lower() in {"local", "dev", "development"}
+
+    def get_plan_rate_limit(self, plan: str) -> int:
+        match plan:
+            case "free":
+                return self.free_plan_rate_limit
+            case "pro":
+                return self.pro_plan_rate_limit
+            case "enterprise":
+                return self.enterprise_plan_rate_limit
+            case _:
+                return self.free_plan_rate_limit
+
+    def get_plan_max_keys(self, plan: str) -> int:
+        match plan:
+            case "free":
+                return self.free_plan_max_keys
+            case "pro":
+                return 25
+            case "enterprise":
+                return 500
+            case _:
+                return self.free_plan_max_keys
 
 
 @lru_cache

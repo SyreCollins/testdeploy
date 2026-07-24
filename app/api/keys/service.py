@@ -5,21 +5,21 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
-from sqlmodel import Session as SASession
+from sqlmodel import Session
 
-from app.db.engine import get_session
-from app.db.models.platform import ApiKey
+from app.core.config import PLAN_FREE
+from app.db.models.platform import ApiKey, Organization, Project
 
 API_KEY_PREFIX = "zam_"
 
 
 class ApiKeyStore:
     _engine = None
+    _rate_cache: dict[str, dict[str, float | int]] = {}
 
     def bootstrap_static_keys(self, raw_keys: list[str]) -> None:
-        with get_session(self._engine) as session:
-            existing = session.exec(select(ApiKey).where(ApiKey.label == "bootstrap")).first()
+        with Session(self._engine) as session:
+            existing = session.query(ApiKey).filter(ApiKey.label == "bootstrap").first()
             if existing:
                 return
             for raw_key in raw_keys:
@@ -28,17 +28,15 @@ class ApiKeyStore:
                     id=f"bootstrap_{secrets.token_hex(4)}",
                     label="bootstrap",
                     prefix=raw_key[:12],
-                    hashed_key=hashed,
+                    key_hash=hashed,
                     is_active=True,
-                    rate_limit_window=0.0,
-                    rate_limit_count=0,
                 )
                 session.add(entry)
             session.commit()
 
     def create_key(
         self, label: str, expires_at: datetime | None = None,
-        project_id: int | None = None,
+        organization_id: int | None = None, project_id: int | None = None,
     ) -> dict[str, Any]:
         raw_key = API_KEY_PREFIX + secrets.token_hex(32)
         key_id = secrets.token_hex(8)
@@ -48,15 +46,14 @@ class ApiKeyStore:
             id=key_id,
             label=label,
             prefix=raw_key[:12],
-            hashed_key=hashed,
+            key_hash=hashed,
             created_at=now,
             expires_at=expires_at,
             is_active=True,
-            rate_limit_window=0.0,
-            rate_limit_count=0,
+            organization_id=organization_id,
             project_id=project_id,
         )
-        with get_session(self._engine) as session:
+        with Session(self._engine) as session:
             session.add(entry)
             session.commit()
             session.refresh(entry)
@@ -72,7 +69,7 @@ class ApiKeyStore:
         }
 
     def get_key(self, key_id: str) -> dict[str, Any] | None:
-        with get_session(self._engine) as session:
+        with Session(self._engine) as session:
             entry = session.get(ApiKey, key_id)
             if entry is None:
                 return None
@@ -84,20 +81,22 @@ class ApiKeyStore:
                 "id": entry.id,
                 "label": entry.label,
                 "prefix": entry.prefix,
-                "hashed_key": entry.hashed_key,
+                "key_hash": entry.key_hash,
                 "created_at": entry.created_at,
                 "expires_at": entry.expires_at,
                 "is_active": entry.is_active,
                 "last_used_at": entry.last_used_at,
-                "rate_limit_window": entry.rate_limit_window,
-                "rate_limit_count": entry.rate_limit_count,
+                "organization_id": entry.organization_id,
                 "project_id": entry.project_id,
             }
 
-    def list_keys(self) -> list[dict[str, Any]]:
+    def list_keys(self, organization_id: int | None = None) -> list[dict[str, Any]]:
         now = datetime.now(UTC)
-        with get_session(self._engine) as session:
-            entries = session.exec(select(ApiKey)).all()
+        with Session(self._engine) as session:
+            query = session.query(ApiKey)
+            if organization_id is not None:
+                query = query.filter(ApiKey.organization_id == organization_id)
+            entries = query.all()
             return [
                 {
                     "id": e.id,
@@ -107,18 +106,19 @@ class ApiKeyStore:
                     "expires_at": e.expires_at,
                     "is_active": e.is_active and (e.expires_at is None or e.expires_at > now),
                     "last_used_at": e.last_used_at,
+                    "organization_id": e.organization_id,
                     "project_id": e.project_id,
                 }
                 for e in entries
             ]
 
     def rotate_key(self, key_id: str) -> dict[str, Any] | None:
-        with get_session(self._engine) as session:
+        with Session(self._engine) as session:
             entry = session.get(ApiKey, key_id)
             if entry is None or not entry.is_active:
                 return None
             raw_key = API_KEY_PREFIX + secrets.token_hex(32)
-            entry.hashed_key = self._hash_key(raw_key)
+            entry.key_hash = self._hash_key(raw_key)
             entry.prefix = raw_key[:12]
             session.add(entry)
             session.commit()
@@ -135,7 +135,7 @@ class ApiKeyStore:
             }
 
     def revoke_key(self, key_id: str) -> bool:
-        with get_session(self._engine) as session:
+        with Session(self._engine) as session:
             entry = session.get(ApiKey, key_id)
             if entry is None:
                 return False
@@ -146,47 +146,47 @@ class ApiKeyStore:
 
     def validate_key(self, raw_key: str) -> dict[str, Any] | None:
         provided_hash = self._hash_key(raw_key)
-        with get_session(self._engine) as session:
-            entries = session.exec(
-                select(ApiKey).where(ApiKey.is_active.is_(True))
-            ).all()
+        with Session(self._engine) as session:
+            entries = session.query(ApiKey).filter(ApiKey.is_active.is_(True)).all()
             for entry in entries:
                 if entry.expires_at and entry.expires_at < datetime.now(UTC):
                     continue
-                if hmac.compare_digest(provided_hash, entry.hashed_key):
-                    entry.last_used_at = time.time()
+                if hmac.compare_digest(provided_hash, entry.key_hash):
+                    entry.last_used_at = datetime.now(UTC)
                     session.add(entry)
                     session.commit()
+                    org_plan = PLAN_FREE
+                    org_id = entry.organization_id
+                    if entry.project_id is not None:
+                        project = session.get(Project, entry.project_id)
+                        if project is not None:
+                            org_id = project.organization_id
+                    if org_id is not None:
+                        org = session.get(Organization, org_id)
+                        if org is not None:
+                            org_plan = org.plan
                     return {
                         "id": entry.id,
                         "label": entry.label,
-                        "hashed_key": entry.hashed_key,
-                        "rate_limit_window": entry.rate_limit_window,
-                        "rate_limit_count": entry.rate_limit_count,
+                        "key_hash": entry.key_hash,
                         "project_id": entry.project_id,
+                        "org_plan": org_plan,
+                        "org_id": entry.organization_id,
                         "is_active": entry.is_active,
                         "expires_at": entry.expires_at,
                     }
             return None
 
     def check_rate_limit(self, key_id: str, max_requests: int, window_seconds: int) -> bool:
-        with get_session(self._engine) as session:
-            entry = session.get(ApiKey, key_id)
-            if entry is None:
-                return False
-            now = time.time()
-            if now - entry.rate_limit_window > window_seconds:
-                entry.rate_limit_window = now
-                entry.rate_limit_count = 1
-                session.add(entry)
-                session.commit()
-                return True
-            if entry.rate_limit_count >= max_requests:
-                return False
-            entry.rate_limit_count += 1
-            session.add(entry)
-            session.commit()
+        now = time.time()
+        cached = self._rate_cache.get(key_id)
+        if cached is None or now - cached["window"] > window_seconds:
+            self._rate_cache[key_id] = {"window": now, "count": 1}
             return True
+        if cached["count"] >= max_requests:
+            return False
+        cached["count"] += 1
+        return True
 
     @staticmethod
     def _hash_key(key: str) -> str:

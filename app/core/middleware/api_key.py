@@ -13,14 +13,21 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.settings = settings
 
-    _PUBLIC_PATHS = {"/v1/health", "/docs", "/redoc", "/openapi.json"}
+    _PUBLIC_PATHS = {
+        "/v1/health", "/docs", "/redoc", "/openapi.json",
+        "/v1/auth/webhook",
+    }
 
     async def dispatch(self, request: Request, call_next) -> Response:
         if request.url.path in self._PUBLIC_PATHS:
             return await call_next(request)
 
         provided_key = request.headers.get("x-zam-ai-key")
+
         if not provided_key:
+            clerk_id = getattr(request.state, "clerk_user_id", None)
+            if clerk_id:
+                return await call_next(request)
             request.app.state.logger.warning(
                 "internal_api_auth_failed",
                 extra={
@@ -68,5 +75,7 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
             )
 
         request.state.api_key_entry = entry
+        request.state.org_id = entry.get("org_id")
+        request.state.project_id = entry.get("project_id")
         return await call_next(request)
 

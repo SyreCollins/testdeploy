@@ -1,9 +1,7 @@
 from collections.abc import Generator
-from functools import lru_cache
 
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel, Session, create_engine
-
+from sqlmodel import Session, SQLModel, create_engine
 
 _engine = None
 
@@ -23,6 +21,8 @@ def get_engine(database_url: str):
 
 def reset_engine() -> None:
     global _engine
+    if _engine is not None:
+        SQLModel.metadata.drop_all(_engine)
     _engine = None
 
 
@@ -32,8 +32,9 @@ def init_db(database_url: str):
     return e
 
 
-def get_session() -> Generator[Session, None, None]:
-    if _engine is None:
+def get_session(engine=None) -> Generator[Session, None, None]:
+    e = engine or _engine
+    if e is None:
         raise RuntimeError("Engine not initialized. Call init_db() first.")
-    with Session(_engine) as session:
+    with Session(e) as session:
         yield session

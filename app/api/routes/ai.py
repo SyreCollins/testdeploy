@@ -35,7 +35,7 @@ def _orch(request: Request) -> ConversationOrchestrator:
 
 
 def _org_id(request: Request) -> int | None:
-    return getattr(request.state, "organization_id", None)
+    return getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
 
 
 @router.post(

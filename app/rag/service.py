@@ -6,13 +6,13 @@ import time
 from typing import Any
 
 from app.core.config import get_settings
+from app.db.models.rag import DocumentChunk, MedicalSource
 from app.rag.chunker import Chunker
 from app.rag.embeddings.base import BaseEmbeddingProvider
 from app.rag.embeddings.mock import MockEmbeddingProvider
 from app.rag.normalizer import clean_whitespace, normalize_dosage_units
 from app.rag.parsers import get_parser
 from app.rag.registry import RagRegistry
-from app.db.models.rag import DocumentChunk, MedicalSource
 from app.rag.vector_store.base import BaseVectorStore
 from app.rag.vector_store.memory import MemoryVectorStore
 

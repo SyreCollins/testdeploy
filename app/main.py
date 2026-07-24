@@ -8,19 +8,23 @@ from app.ai.gateway import get_model_provider
 from app.ai.orchestrator import ConversationOrchestrator
 from app.ai.prompts import PromptManager
 from app.api.keys.service import store as api_key_store
-from app.db.engine import init_db as init_platform_db
 from app.api.routes.ai import router as ai_router
 from app.api.routes.audit import router as audit_router
+from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
 from app.api.routes.keys import router as keys_router
+from app.api.routes.organizations import router as org_router
 from app.api.routes.retrieval import router as retrieval_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware.api_key import InternalApiKeyMiddleware
+from app.core.middleware.auth import ClerkAuthMiddleware
 from app.core.middleware.rate_limit import RateLimitMiddleware
 from app.core.middleware.request_id import RequestIdMiddleware
 from app.core.middleware.request_logger import RequestLoggingMiddleware
+from app.core.middleware.usage_tracker import UsageTracker
+from app.db.engine import init_db as init_platform_db
 from app.rag.embeddings import get_embedding_provider
 from app.rag.registry import RagRegistry
 from app.rag.service import RetrievalService
@@ -107,8 +111,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(app)
 
+    app.add_middleware(ClerkAuthMiddleware)
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(InternalApiKeyMiddleware, settings=settings)
+    app.add_middleware(UsageTracker, engine=db_engine)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
 
@@ -117,6 +123,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(ai_router, prefix="/v1", tags=["ai"])
     app.include_router(keys_router, prefix="/v1/admin", tags=["admin"])
     app.include_router(audit_router, prefix="/v1", tags=["audit"])
+    app.include_router(auth_router)
+    app.include_router(org_router)
 
     def custom_openapi():
         if app.openapi_schema:
