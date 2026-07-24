@@ -14,6 +14,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **`_org_id()` fallback for internal API keys** | `_org_id()` in `app/api/routes/ai.py` only read `request.state.organization_id` (set by ClerkAuthMiddleware). Internal API key requests set `request.state.org_id` instead — so `organization_id` was never passed to audit traces for internal-key-authed requests. Now falls back to `org_id` matching the `UsageTracker` pattern. |
 | **Superadmin — ApiKey `is_admin` flag** | Added `is_admin: bool = False` to `ApiKey` model. Bootstrap keys auto-tagged `is_admin=True`. All CRUD methods (`create_key`, `validate_key`, `get_key`, `list_keys`, `rotate_key`) propagate `is_admin` in their return dicts. |
 | **Superadmin — middleware `is_admin` flag** | `InternalApiKeyMiddleware` now sets `request.state.is_admin` from the validated key entry, enabling admin routes to check auth. |
+| **Superadmin — admin routes** | New `app/api/routes/admin.py` — routes under `/v1/admin/` with `_require_admin` guard. `GET /v1/admin/orgs` — all orgs with member/project counts. `GET /v1/admin/orgs/{id}` — single org detail. `GET /v1/admin/orgs/{id}/users` and `/projects` — org-scoped lists. `GET /v1/admin/users?org_id=` — all users. `GET /v1/admin/audit/traces` and `/{trace_id}` — cross-org audit. `GET /v1/admin/usage?org_id=&from=&to=` — aggregated usage across orgs. |
 
 ### ✅ Completed (this session — 2026-07-23)
 

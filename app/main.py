@@ -8,6 +8,7 @@ from app.ai.gateway import get_model_provider
 from app.ai.orchestrator import ConversationOrchestrator
 from app.ai.prompts import PromptManager
 from app.api.keys.service import store as api_key_store
+from app.api.routes.admin import router as admin_router
 from app.api.routes.ai import router as ai_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.auth import router as auth_router
@@ -118,6 +119,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
 
+    app.include_router(admin_router, prefix="/v1", tags=["admin"])
     app.include_router(health_router, prefix="/v1", tags=["system"])
     app.include_router(retrieval_router, prefix="/v1", tags=["retrieval"])
     app.include_router(ai_router, prefix="/v1", tags=["ai"])
