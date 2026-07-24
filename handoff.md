@@ -12,6 +12,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | Area | Details |
 |---|---|
 | **`_org_id()` fallback for internal API keys** | `_org_id()` in `app/api/routes/ai.py` only read `request.state.organization_id` (set by ClerkAuthMiddleware). Internal API key requests set `request.state.org_id` instead — so `organization_id` was never passed to audit traces for internal-key-authed requests. Now falls back to `org_id` matching the `UsageTracker` pattern. |
+| **Superadmin — ApiKey `is_admin` flag** | Added `is_admin: bool = False` to `ApiKey` model. Bootstrap keys auto-tagged `is_admin=True`. All CRUD methods (`create_key`, `validate_key`, `get_key`, `list_keys`, `rotate_key`) propagate `is_admin` in their return dicts. |
 
 ### ✅ Completed (this session — 2026-07-23)
 

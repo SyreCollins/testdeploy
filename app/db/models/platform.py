@@ -57,6 +57,7 @@ class ApiKey(SQLModel, table=True):
     is_active: bool = True
     expires_at: datetime | None = None
     last_used_at: datetime | None = None
+    is_admin: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     organization_id: int | None = Field(default=None, foreign_key="organizations.id", index=True)
     project_id: int | None = Field(default=None, foreign_key="projects.id")

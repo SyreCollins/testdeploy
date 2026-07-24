@@ -30,6 +30,7 @@ class ApiKeyStore:
                     prefix=raw_key[:12],
                     key_hash=hashed,
                     is_active=True,
+                    is_admin=True,
                 )
                 session.add(entry)
             session.commit()
@@ -37,6 +38,7 @@ class ApiKeyStore:
     def create_key(
         self, label: str, expires_at: datetime | None = None,
         organization_id: int | None = None, project_id: int | None = None,
+        is_admin: bool = False,
     ) -> dict[str, Any]:
         raw_key = API_KEY_PREFIX + secrets.token_hex(32)
         key_id = secrets.token_hex(8)
@@ -50,6 +52,7 @@ class ApiKeyStore:
             created_at=now,
             expires_at=expires_at,
             is_active=True,
+            is_admin=is_admin,
             organization_id=organization_id,
             project_id=project_id,
         )
@@ -64,6 +67,7 @@ class ApiKeyStore:
             "created_at": entry.created_at,
             "expires_at": entry.expires_at,
             "is_active": entry.is_active,
+            "is_admin": entry.is_admin,
             "key": raw_key,
             "project_id": entry.project_id,
         }
@@ -85,6 +89,7 @@ class ApiKeyStore:
                 "created_at": entry.created_at,
                 "expires_at": entry.expires_at,
                 "is_active": entry.is_active,
+                "is_admin": entry.is_admin,
                 "last_used_at": entry.last_used_at,
                 "organization_id": entry.organization_id,
                 "project_id": entry.project_id,
@@ -105,6 +110,7 @@ class ApiKeyStore:
                     "created_at": e.created_at,
                     "expires_at": e.expires_at,
                     "is_active": e.is_active and (e.expires_at is None or e.expires_at > now),
+                    "is_admin": e.is_admin,
                     "last_used_at": e.last_used_at,
                     "organization_id": e.organization_id,
                     "project_id": e.project_id,
@@ -130,6 +136,7 @@ class ApiKeyStore:
                 "created_at": entry.created_at,
                 "expires_at": entry.expires_at,
                 "is_active": entry.is_active,
+                "is_admin": entry.is_admin,
                 "key": raw_key,
                 "project_id": entry.project_id,
             }
@@ -173,6 +180,7 @@ class ApiKeyStore:
                         "org_plan": org_plan,
                         "org_id": entry.organization_id,
                         "is_active": entry.is_active,
+                        "is_admin": entry.is_admin,
                         "expires_at": entry.expires_at,
                     }
             return None
