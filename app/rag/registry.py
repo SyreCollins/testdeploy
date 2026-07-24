@@ -1,7 +1,7 @@
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import get_settings
@@ -21,6 +21,8 @@ class RagRegistry:
             connect_args = {"check_same_thread": False}
             if ":memory:" in self.database_url:
                 pool_kwargs["poolclass"] = StaticPool
+        else:
+            pool_kwargs["pool_pre_ping"] = True
 
         self.engine = create_engine(self.database_url, connect_args=connect_args, **pool_kwargs)
 

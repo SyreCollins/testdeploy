@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 _engine = None
@@ -15,6 +15,8 @@ def get_engine(database_url: str):
             connect_args = {"check_same_thread": False}
             if ":memory:" in database_url:
                 pool_kwargs["poolclass"] = StaticPool
+        else:
+            pool_kwargs["pool_pre_ping"] = True
         _engine = create_engine(database_url, connect_args=connect_args, **pool_kwargs)
     return _engine
 

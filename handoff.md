@@ -15,6 +15,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Superadmin — ApiKey `is_admin` flag** | Added `is_admin: bool = False` to `ApiKey` model. Bootstrap keys auto-tagged `is_admin=True`. All CRUD methods (`create_key`, `validate_key`, `get_key`, `list_keys`, `rotate_key`) propagate `is_admin` in their return dicts. |
 | **Superadmin — middleware `is_admin` flag** | `InternalApiKeyMiddleware` now sets `request.state.is_admin` from the validated key entry, enabling admin routes to check auth. |
 | **Superadmin — admin routes** | New `app/api/routes/admin.py` — routes under `/v1/admin/` with `_require_admin` guard. `GET /v1/admin/orgs` — all orgs with member/project counts. `GET /v1/admin/orgs/{id}` — single org detail. `GET /v1/admin/orgs/{id}/users` and `/projects` — org-scoped lists. `GET /v1/admin/users?org_id=` — all users. `GET /v1/admin/audit/traces` and `/{trace_id}` — cross-org audit. `GET /v1/admin/usage?org_id=&from=&to=` — aggregated usage across orgs. |
+| **Neon migration prep** | Added `pool_pre_ping=True` for Postgres connections in `app/db/engine.py` and `app/rag/registry.py`. Updated `.env.example` with `ZAM_AI_DATABASE_URL` (Neon) and Clerk credentials as commented-out templates. `psycopg[binary]` already in deps. When ready: fill in `.env` values, remove `check_same_thread`, migrate data. |
 
 ### ✅ Completed (this session — 2026-07-23)
 
