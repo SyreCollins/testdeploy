@@ -77,5 +77,6 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
         request.state.api_key_entry = entry
         request.state.org_id = entry.get("org_id")
         request.state.project_id = entry.get("project_id")
+        request.state.is_admin = entry.get("is_admin", False)
         return await call_next(request)
 
