@@ -7,6 +7,17 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ## State (~253 tests pass, 0 lint errors)
 
+### ✅ Completed (this session — 2026-07-27)
+
+| Area | Details |
+|---|---|
+| **Render deploy & testing** | Deployed to `testdeploy-pyb7.onrender.com`. Neon DB connected via `postgresql+psycopg://`. Fixed DB URL scheme (`postgresql://` → `postgresql+psycopg://` for psycopg v3). Installed `psycopg[binary]` in venv. Added `WEB_CONCURRENCY=1` for Render free tier. |
+| **CI lint fixes** | Removed unused `NullPool` import in `engine.py` and `registry.py`. Fixed import ordering in `admin.py` (starlette grouped with third-party). Fixed E402 in `service.py` (logger placed between import blocks). |
+| **Bootstrap key hash mismatch** | `bootstrap_static_keys` only checked `label == "bootstrap"` — if a key from a previous deployment had a different value, it was never replaced. Now compares hash sets: deletes stale bootstrap keys and recreates with current env var value. |
+| **Clerk webhook signature verification** | Two bugs fixed: (1) Svix signatures are base64-encoded, code was using `hexdigest()` — changed to `base64.b64encode(hmac.digest())`. (2) Svix secret is base64-encoded after `whsec_` prefix — now strips prefix and `base64.b64decode`s before using as HMAC key. |
+| **Webhook `user.created` foreign key error** | Hardcoded `organization_id=1` in `user.created` handler, but no org with id 1 might exist. Now looks up first org in DB; if none exists, auto-creates a "Default Organization" before inserting the user. |
+| **Clerk webhook tested** | All events (`organization.created`, `organization_membership.created`) processed cleanly. Org `testorg` (clerk id: `org_3H6OlY0Ed2JTKlw9FseJzCH2YZn`) created in Neon with id=2. |
+
 ### ✅ Completed (this session — 2026-07-24)
 
 | Area | Details |
@@ -79,7 +90,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - 0 TODO/FIXME/HACK/XXX comments in codebase
 - `.env` has real keys for Jina, Pinecone, Voyage, and Claude
 - SaaS model (ADR 6): Partners route through main backend. Zam AI called with single internal key. New plan adds direct partner keys as second tier.
-- **Middleware ordering**: Starlette `add_middleware` wraps outward — last added runs first. `InternalApiKeyMiddleware` must be outermost so internal key is validated before `ClerkAuthMiddleware` runs. Current order (outermost → innermost): RequestLogging → RequestId → InternalApiKey → RateLimit → ClerkAuth → UsageTracker → Route.
+- **Middleware ordering**: Starlette `add_middleware` wraps outward — last added runs first. `InternalApiKeyMiddleware` must be before `ClerkAuthMiddleware` so internal key is validated first. Current order (outermost → innermost): RequestLogging → RequestId → UsageTracker → InternalApiKey → RateLimit → ClerkAuth → Route.
 - **DB schema drift on SQLite**: `SQLModel.metadata.create_all(checkfirst=True)` does not `ALTER TABLE` — new columns are silently ignored on existing tables. Always create tables from scratch in tests (`reset_engine()` drops all) or use explicit migrations.
 - **State attribute convention**: `InternalApiKeyMiddleware` sets `request.state.org_id`; `ClerkAuthMiddleware` sets `request.state.organization_id`. Route helpers should fall back: `getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)` (see `_org_id()` in `ai.py` and `UsageTracker`).
 - **Rate limit persistence**: Rate limit windows are ephemeral (in-memory `_rate_cache` dict). Lost on restart — acceptable for v1, consider Redis for production.
@@ -88,9 +99,8 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 | Priority | Area | What to do |
 |---|---|---|
+| **HIGH** | JWT auth & org flow | Decide: (A) Use Clerk JWT for org-scoped auth — need to grab test token from Clerk Dashboard → JWT Templates → Test → Generate. (B) Add `organization_id` param to admin key creation route so org-scoped keys can be created with `local-dev-key`. Option B bypasses the Clerk end-to-end auth flow. |
 | **HIGH** | Add `X-Caller-Organization` header passthrough | Let backend tag which org each request is for |
-| **HIGH** | Neon migration | SQLite → PostgreSQL, add `psycopg` dep, update `database_url`, remove `check_same_thread` |
-| **HIGH** | Commit uncommitted work | Phase 4–5 files (auth.py, organizations.py, usage_tracker.py, etc.) plus test files are untracked/unstaged. All lint-clean and test-green — ready to commit. |
 | **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` |
 | **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — currently placeholder |
 | **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — currently placeholder |
