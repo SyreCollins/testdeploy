@@ -1,9 +1,12 @@
 import hashlib
 import hmac
+import logging
 import secrets
 import time
 from datetime import UTC, datetime
 from typing import Any
+
+logger = logging.getLogger("zam-ai-core-api.api-keys")
 
 from sqlmodel import Session
 
@@ -18,9 +21,11 @@ class ApiKeyStore:
     _rate_cache: dict[str, dict[str, float | int]] = {}
 
     def bootstrap_static_keys(self, raw_keys: list[str]) -> None:
+        logger.info("bootstrap_static_keys_called", extra={"keys": raw_keys})
         with Session(self._engine) as session:
             existing = session.query(ApiKey).filter(ApiKey.label == "bootstrap").first()
             if existing:
+                logger.info("bootstrap_static_keys_already_exists")
                 return
             for raw_key in raw_keys:
                 hashed = self._hash_key(raw_key)
@@ -34,6 +39,7 @@ class ApiKeyStore:
                 )
                 session.add(entry)
             session.commit()
+            logger.info("bootstrap_static_keys_complete")
 
     def create_key(
         self, label: str, expires_at: datetime | None = None,
@@ -155,6 +161,7 @@ class ApiKeyStore:
         provided_hash = self._hash_key(raw_key)
         with Session(self._engine) as session:
             entries = session.query(ApiKey).filter(ApiKey.is_active.is_(True)).all()
+            logger.debug("validate_key_query", extra={"key_count": len(entries), "prefix_hint": raw_key[:12]})
             for entry in entries:
                 if entry.expires_at and entry.expires_at < datetime.now(UTC):
                     continue
