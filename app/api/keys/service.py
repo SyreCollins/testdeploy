@@ -23,17 +23,22 @@ class ApiKeyStore:
     def bootstrap_static_keys(self, raw_keys: list[str]) -> None:
         logger.info("bootstrap_static_keys_called", extra={"keys": raw_keys})
         with Session(self._engine) as session:
-            existing = session.query(ApiKey).filter(ApiKey.label == "bootstrap").first()
-            if existing:
-                logger.info("bootstrap_static_keys_already_exists")
+            existing = session.query(ApiKey).filter(ApiKey.label == "bootstrap").all()
+            existing_hashes = {e.key_hash for e in existing if e.is_active}
+            expected_hashes = {self._hash_key(k) for k in raw_keys}
+
+            if existing_hashes == expected_hashes:
+                logger.info("bootstrap_static_keys_up_to_date")
                 return
+
+            for e in existing:
+                session.delete(e)
             for raw_key in raw_keys:
-                hashed = self._hash_key(raw_key)
                 entry = ApiKey(
                     id=f"bootstrap_{secrets.token_hex(4)}",
                     label="bootstrap",
                     prefix=raw_key[:12],
-                    key_hash=hashed,
+                    key_hash=self._hash_key(raw_key),
                     is_active=True,
                     is_admin=True,
                 )
