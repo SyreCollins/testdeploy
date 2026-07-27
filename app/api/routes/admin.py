@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlmodel import Session, func, select
+from starlette import status
 
 from app.api.schemas.audit import (
     AuditEventSummary,
@@ -14,7 +15,6 @@ from app.core.config import get_settings
 from app.db.engine import get_engine
 from app.db.models.platform import Organization, Project, User
 from app.db.models.usage import UsageRecord
-from starlette import status
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
