@@ -6,12 +6,12 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-logger = logging.getLogger("zam-ai-core-api.api-keys")
-
 from sqlmodel import Session
 
 from app.core.config import PLAN_FREE
 from app.db.models.platform import ApiKey, Organization, Project
+
+logger = logging.getLogger("zam-ai-core-api.api-keys")
 
 API_KEY_PREFIX = "zam_"
 
