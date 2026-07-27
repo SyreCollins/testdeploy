@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import hmac
 import logging
@@ -65,12 +66,18 @@ def _handle_webhook_event(event_type: str, data: dict, database_url: str) -> Non
             ).first()
             if existing:
                 return
+            default_org = session.exec(
+                select(Organization).order_by(Organization.id).limit(1)
+            ).first()
+            if not default_org:
+                logger.warning("clerk_webhook_no_org_found", extra={"event": "user.created"})
+                return
             user = User(
                 clerk_user_id=clerk_user_id,
                 email=email,
                 name=name,
                 role="member",
-                organization_id=1,
+                organization_id=default_org.id,
             )
             session.add(user)
             session.commit()
@@ -195,8 +202,14 @@ def _verify_svix_signature(
     svix_signature: str,
     secret: str,
 ) -> bool:
+    raw_secret = secret.removeprefix("whsec_")
+    try:
+        key = base64.b64decode(raw_secret)
+    except Exception:
+        key = secret.encode()
+
     signed_content = f"{svix_id}.{svix_timestamp}.{payload.decode('utf-8')}".encode()
-    expected = hmac.new(secret.encode(), signed_content, hashlib.sha256).hexdigest()
+    expected = hmac.new(key, signed_content, hashlib.sha256).hexdigest()
 
     for sig_part in svix_signature.split(" "):
         if sig_part.startswith("v1,"):
