@@ -70,8 +70,16 @@ def _handle_webhook_event(event_type: str, data: dict, database_url: str) -> Non
                 select(Organization).order_by(Organization.id).limit(1)
             ).first()
             if not default_org:
-                logger.warning("clerk_webhook_no_org_found", extra={"event": "user.created"})
-                return
+                default_org = Organization(
+                    clerk_org_id="default",
+                    name="Default Organization",
+                    slug="default",
+                    plan="free",
+                    is_active=True,
+                )
+                session.add(default_org)
+                session.commit()
+                session.refresh(default_org)
             user = User(
                 clerk_user_id=clerk_user_id,
                 email=email,
