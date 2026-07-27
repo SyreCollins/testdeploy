@@ -217,7 +217,7 @@ def _verify_svix_signature(
         key = secret.encode()
 
     signed_content = f"{svix_id}.{svix_timestamp}.{payload.decode('utf-8')}".encode()
-    expected = hmac.new(key, signed_content, hashlib.sha256).hexdigest()
+    expected = base64.b64encode(hmac.new(key, signed_content, hashlib.sha256).digest()).decode()
 
     for sig_part in svix_signature.split(" "):
         if sig_part.startswith("v1,"):
