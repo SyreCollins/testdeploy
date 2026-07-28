@@ -17,6 +17,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **`X-Caller-Organization` header passthrough** | Admin keys can now override their org context via `X-Caller-Organization` header. Useful for superadmin keys acting on behalf of any org. `InternalApiKeyMiddleware` also sets `request.state.organization_id` for consistency. |
 | **Admin key creation accepts `organization_id`** | `CreateApiKeyRequest.organization_id` is now **required** on `POST /v1/admin/keys` — every key must be tied to an org. |
 | **Bootstrap keys tied to org** | New `ZAM_AI_BOOTSTRAP_ORGANIZATION_ID` env var. Bootstrap keys (`ZAM_AI_INTERNAL_API_KEYS`) now get `organization_id` set from this var. |
+| **Clerk JWT org_id resolution fixed** | `_extract_org_id` tried `int("org_xxxx")` which always failed. Now `_resolve_org_id` first tries int(), then falls back to a DB lookup on `Organization.clerk_org_id` to get the internal organization id. Clerk JWT auth path now fully works end-to-end. |
 
 ### ✅ Completed (this session — 2026-07-27)
 
