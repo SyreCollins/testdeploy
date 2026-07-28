@@ -25,30 +25,7 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
         provided_key = request.headers.get("x-zam-ai-key")
 
         if not provided_key:
-            clerk_id = getattr(request.state, "clerk_user_id", None)
-            if clerk_id:
-                return await call_next(request)
-            request.app.state.logger.warning(
-                "internal_api_auth_failed",
-                extra={
-                    "request_id": get_request_id(request),
-                    "path": request.url.path,
-                    "caller_service": request.headers.get("x-caller-service"),
-                },
-            )
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={
-                    "request_id": get_request_id(request),
-                    "status": "error",
-                    "error": {
-                        "code": "authentication_failed",
-                        "message": "Invalid or missing internal API key.",
-                        "retryable": False,
-                        "details": {},
-                    },
-                },
-            )
+            return await call_next(request)
 
         entry = api_key_store.validate_key(provided_key)
         if entry is None:
