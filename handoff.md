@@ -5,7 +5,18 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-## State (~253 tests pass, 0 lint errors)
+## State (~281 tests pass, 0 lint errors)
+
+### ✅ Completed (this session — 2026-07-28)
+
+| Area | Details |
+|---|---|
+| **TS types synced with ENDPOINTS.ts** | Created missing request/response types for all 40 endpoint keys — OCR, reminders, doctor assist, pharmacy assist, auth webhook, organizations, projects (CRUD + API key mgmt), admin (keys, evals, orgs, users, audit, usage). 4 new `.ts` files, barrel export updated. |
+| **Clerk JWT org auth path fixed** | `_get_org()` in `organizations.py` now falls back to `request.state.organization_id` (set by ClerkAuthMiddleware from JWT's `org_id` claim), so Clerk-authenticated users can hit org routes. |
+| **Middleware ordering bug fixed** | `InternalApiKeyMiddleware` was rejecting Clerk JWT requests before `ClerkAuthMiddleware` could validate them — it checked `clerk_user_id` on state that hadn't been set yet. Now simply passes through when no `x-zam-ai-key` is present, letting the JWT flow work end-to-end. |
+| **`X-Caller-Organization` header passthrough** | Admin keys can now override their org context via `X-Caller-Organization` header. Useful for superadmin keys acting on behalf of any org. `InternalApiKeyMiddleware` also sets `request.state.organization_id` for consistency. |
+| **Admin key creation accepts `organization_id`** | `CreateApiKeyRequest.organization_id` is now **required** on `POST /v1/admin/keys` — every key must be tied to an org. |
+| **Bootstrap keys tied to org** | New `ZAM_AI_BOOTSTRAP_ORGANIZATION_ID` env var. Bootstrap keys (`ZAM_AI_INTERNAL_API_KEYS`) now get `organization_id` set from this var. |
 
 ### ✅ Completed (this session — 2026-07-27)
 
@@ -90,21 +101,22 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - 0 TODO/FIXME/HACK/XXX comments in codebase
 - `.env` has real keys for Jina, Pinecone, Voyage, and Claude
 - SaaS model (ADR 6): Partners route through main backend. Zam AI called with single internal key. New plan adds direct partner keys as second tier.
-- **Middleware ordering**: Starlette `add_middleware` wraps outward — last added runs first. `InternalApiKeyMiddleware` must be before `ClerkAuthMiddleware` so internal key is validated first. Current order (outermost → innermost): RequestLogging → RequestId → UsageTracker → InternalApiKey → RateLimit → ClerkAuth → Route.
+- **Middleware ordering**: Starlette `add_middleware` wraps outward — last added runs first. `InternalApiKeyMiddleware` passes through when no `x-zam-ai-key` is present, letting `ClerkAuthMiddleware` handle JWT. Current order (outermost → innermost): RequestLogging → RequestId → UsageTracker → InternalApiKey → RateLimit → ClerkAuth → Route.
+- **Auth flow**: Internal API key → `InternalApiKeyMiddleware` validates, sets `org_id` + `organization_id` + `is_admin`. Clerk JWT → passes through `InternalApiKeyMiddleware`, validated by `ClerkAuthMiddleware` which sets `organization_id` from JWT `org_id` claim. Both paths ultimately set `request.state.organization_id`.
+- **Every key tied to an org**: Bootstrap keys use `ZAM_AI_BOOTSTRAP_ORGANIZATION_ID`. Admin key creation requires `organization_id`. Org-scoped key creation infers org from auth context. Ensure the org exists in DB before bootstrapping on PostgreSQL (FK constraint).
+- **`X-Caller-Organization` header**: Admin keys can override their org per-request via this header. Useful for superadmin acting on behalf of different orgs.
 - **DB schema drift on SQLite**: `SQLModel.metadata.create_all(checkfirst=True)` does not `ALTER TABLE` — new columns are silently ignored on existing tables. Always create tables from scratch in tests (`reset_engine()` drops all) or use explicit migrations.
-- **State attribute convention**: `InternalApiKeyMiddleware` sets `request.state.org_id`; `ClerkAuthMiddleware` sets `request.state.organization_id`. Route helpers should fall back: `getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)` (see `_org_id()` in `ai.py` and `UsageTracker`).
+- **State attribute convention**: `InternalApiKeyMiddleware` sets `request.state.org_id` and `request.state.organization_id`; `ClerkAuthMiddleware` sets `request.state.organization_id`. Route helpers should fall back: `getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)` (see `_org_id()` in `ai.py`, `_get_org()` in `organizations.py`, and `UsageTracker`).
 - **Rate limit persistence**: Rate limit windows are ephemeral (in-memory `_rate_cache` dict). Lost on restart — acceptable for v1, consider Redis for production.
 
 ### ❌ Remaining Gaps
 
 | Priority | Area | What to do |
 |---|---|---|
-| **HIGH** | JWT auth & org flow | Decide: (A) Use Clerk JWT for org-scoped auth — need to grab test token from Clerk Dashboard → JWT Templates → Test → Generate. (B) Add `organization_id` param to admin key creation route so org-scoped keys can be created with `local-dev-key`. Option B bypasses the Clerk end-to-end auth flow. |
-| **HIGH** | Add `X-Caller-Organization` header passthrough | Let backend tag which org each request is for |
-| **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` |
-| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — currently placeholder |
-| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — currently placeholder |
-| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — currently placeholder |
+| **MEDIUM** | OCR pipeline | `POST /v1/ai/prescriptions/ocr-jobs` + `GET .../{job_id}` — completely absent, no code at all |
+| **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — stub returns "not implemented" |
+| **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — stub returns "not implemented" |
+| **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — stub returns "not implemented" |
 | **LOW** | 13 prompt templates not created | Various workflow prompts |
 | **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` and `app/integrations/*` — just `__init__.py` |
 | **LOW** | `tests/__init__.py` | Add package init |
