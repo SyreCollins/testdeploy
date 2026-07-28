@@ -433,3 +433,172 @@ export interface ChatResponse {
   confidence: ConfidenceMetadata;
   audit: AuditMetadata;
 }
+
+// ──────────────────────────────────────────────
+// Prescriptions OCR
+// ──────────────────────────────────────────────
+
+export interface PrescriptionOcrCreateInput {
+  image_data: string;
+  image_format: string;
+}
+
+export interface PrescriptionOcrCreateRequest {
+  request_id?: string | null;
+  caller: CallerInfo;
+  actor_context: ActorContext;
+  authorization_context?: AuthorizationContext;
+  locale?: Locale;
+  input: PrescriptionOcrCreateInput;
+}
+
+export interface PrescriptionOcrJob {
+  job_id: string;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+  extracted_text: string | null;
+  error: string | null;
+}
+
+export interface PrescriptionOcrCreateResult {
+  job: PrescriptionOcrJob;
+}
+
+export interface PrescriptionOcrCreateResponse {
+  request_id: string | null;
+  status: string;
+  workflow: string;
+  result: PrescriptionOcrCreateResult | null;
+  safety: SafetyMetadata;
+  citations: CitationItem[];
+  confidence: ConfidenceMetadata;
+  audit: AuditMetadata;
+}
+
+export interface PrescriptionOcrPollResponse {
+  request_id: string | null;
+  status: string;
+  workflow: string;
+  result: PrescriptionOcrJob | null;
+  safety: SafetyMetadata;
+  citations: CitationItem[];
+  confidence: ConfidenceMetadata;
+  audit: AuditMetadata;
+}
+
+// ──────────────────────────────────────────────
+// Reminders Parse Schedule
+// ──────────────────────────────────────────────
+
+export interface ReminderParseInput {
+  raw_text: string;
+}
+
+export interface ReminderParseRequest {
+  request_id?: string | null;
+  caller: CallerInfo;
+  actor_context: ActorContext;
+  authorization_context?: AuthorizationContext;
+  locale?: Locale;
+  input: ReminderParseInput;
+}
+
+export interface ParsedReminder {
+  medication_name: string;
+  dosage: string | null;
+  frequency: string;
+  time_of_day: string[];
+  start_date: string | null;
+  notes: string | null;
+}
+
+export interface ReminderParseResult {
+  reminders: ParsedReminder[];
+  unparsed_text: string | null;
+}
+
+export interface ReminderParseResponse {
+  request_id: string | null;
+  status: string;
+  workflow: string;
+  result: ReminderParseResult | null;
+  safety: SafetyMetadata;
+  citations: CitationItem[];
+  confidence: ConfidenceMetadata;
+  audit: AuditMetadata;
+}
+
+// ──────────────────────────────────────────────
+// Doctor Assist
+// ──────────────────────────────────────────────
+
+export interface DoctorAssistInput {
+  query: string;
+  patient_context: PatientContext;
+  conversation_context: ConversationContext;
+}
+
+export interface DoctorAssistRequest {
+  request_id?: string | null;
+  caller: CallerInfo;
+  actor_context: ActorContext;
+  authorization_context?: AuthorizationContext;
+  locale?: Locale;
+  input: DoctorAssistInput;
+}
+
+export interface DoctorAssistResult {
+  answer: string;
+  recommendations: string[];
+  differential_diagnoses: string[] | null;
+  follow_up_questions: string[];
+}
+
+export interface DoctorAssistResponse {
+  request_id: string | null;
+  status: string;
+  workflow: string;
+  result: DoctorAssistResult | null;
+  safety: SafetyMetadata;
+  citations: CitationItem[];
+  confidence: ConfidenceMetadata;
+  audit: AuditMetadata;
+}
+
+// ──────────────────────────────────────────────
+// Pharmacy Assist
+// ──────────────────────────────────────────────
+
+export interface PharmacyAssistInput {
+  query: string;
+  patient_context: PatientContext;
+  conversation_context: ConversationContext;
+}
+
+export interface PharmacyAssistRequest {
+  request_id?: string | null;
+  caller: CallerInfo;
+  actor_context: ActorContext;
+  authorization_context?: AuthorizationContext;
+  locale?: Locale;
+  input: PharmacyAssistInput;
+}
+
+export interface PharmacyAssistResult {
+  answer: string;
+  alternative_medications: string[] | null;
+  insurance_notes: string[] | null;
+  follow_up_questions: string[];
+}
+
+export interface PharmacyAssistResponse {
+  request_id: string | null;
+  status: string;
+  workflow: string;
+  result: PharmacyAssistResult | null;
+  safety: SafetyMetadata;
+  citations: CitationItem[];
+  confidence: ConfidenceMetadata;
+  audit: AuditMetadata;
+}

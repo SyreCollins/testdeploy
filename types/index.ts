@@ -151,4 +151,87 @@ export type {
   ChatRequest,
   ChatResult,
   ChatResponse,
+  PrescriptionOcrCreateInput,
+  PrescriptionOcrCreateRequest,
+  PrescriptionOcrJob,
+  PrescriptionOcrCreateResult,
+  PrescriptionOcrCreateResponse,
+  PrescriptionOcrPollResponse,
+  ReminderParseInput,
+  ReminderParseRequest,
+  ParsedReminder,
+  ReminderParseResult,
+  ReminderParseResponse,
+  DoctorAssistInput,
+  DoctorAssistRequest,
+  DoctorAssistResult,
+  DoctorAssistResponse,
+  PharmacyAssistInput,
+  PharmacyAssistRequest,
+  PharmacyAssistResult,
+  PharmacyAssistResponse,
 } from "./api/ai";
+
+// ──────────────────────────────────────────────
+// API - Auth
+// ──────────────────────────────────────────────
+export type {
+  ClerkWebhookEvent,
+  ClerkWebhookRequest,
+  ClerkWebhookResponse,
+} from "./api/auth";
+
+// ──────────────────────────────────────────────
+// API - Organizations
+// ──────────────────────────────────────────────
+export type {
+  OrganizationInfo,
+  OrganizationMeResponse,
+  UsageRecord,
+  OrganizationUsageResponse,
+} from "./api/organizations";
+
+// ──────────────────────────────────────────────
+// API - Projects
+// ──────────────────────────────────────────────
+export type {
+  ProjectInfo,
+  CreateProjectRequest,
+  ListProjectsResponse,
+  CreateProjectResponse,
+  UpdateProjectRequest,
+  ProjectDetailResponse,
+  DeleteProjectResponse,
+  CreateProjectApiKeyRequest,
+  ProjectApiKeyInfo,
+  ListProjectApiKeysResponse,
+  CreateProjectApiKeyResponse,
+  RotateProjectApiKeyResponse,
+  RevokeProjectApiKeyResponse,
+} from "./api/projects";
+
+// ──────────────────────────────────────────────
+// API - Admin
+// ──────────────────────────────────────────────
+export type {
+  AdminApiKeyInfo,
+  ListAdminKeysResponse,
+  RotateAdminKeyResponse,
+  RevokeAdminKeyResponse,
+  RunEvaluationResponse,
+  AdminOrganizationInfo,
+  ListAdminOrganizationsResponse,
+  AdminOrganizationDetailResponse,
+  AdminOrgUserInfo,
+  ListAdminOrgUsersResponse,
+  AdminOrgProjectInfo,
+  ListAdminOrgProjectsResponse,
+  AdminUserInfo,
+  ListAdminUsersResponse,
+  AdminAuditEventSummary,
+  AdminAuditTraceInfo,
+  ListAdminAuditTracesResponse,
+  GetAdminAuditTraceResponse,
+  AdminUsageRecord,
+  AdminUsageResponse,
+} from "./api/admin";
