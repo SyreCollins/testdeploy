@@ -18,6 +18,8 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **Admin key creation accepts `organization_id`** | `CreateApiKeyRequest.organization_id` is now **required** on `POST /v1/admin/keys` — every key must be tied to an org. |
 | **Bootstrap keys tied to org** | New `ZAM_AI_BOOTSTRAP_ORGANIZATION_ID` env var. Bootstrap keys (`ZAM_AI_INTERNAL_API_KEYS`) now get `organization_id` set from this var. |
 | **Clerk JWT org_id resolution fixed** | `_extract_org_id` tried `int("org_xxxx")` which always failed. Now `_resolve_org_id` first tries int(), then falls back to a DB lookup on `Organization.clerk_org_id` to get the internal organization id. Clerk JWT auth path now fully works end-to-end. |
+| **Frontend integration guide** | Created `docs/guides/frontend-integration.md` — full guide covering Clerk Dashboard setup, Clerk SDK integration, API call patterns, endpoint reference, and end-to-end walkthrough. Updated with real backend URL (`testdeploy-pyb7.onrender.com`) and JWT template name (`zam-ai`). |
+| **ENDPOINTS.ts verified** | All 33 actual route paths match their `ENDPOINTS.ts` entries. 6 planned-but-unimplemented entries (OCR, reminders, doctor assist, pharmacy assist, evaluations) left in as future work. |
 
 ### ✅ Completed (this session — 2026-07-27)
 
@@ -118,6 +120,7 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 | **MEDIUM** | Doctor assistant endpoint | `POST /v1/ai/doctor/assist` — stub returns "not implemented" |
 | **MEDIUM** | Pharmacy assistant endpoint | `POST /v1/ai/pharmacy/assist` — stub returns "not implemented" |
 | **MEDIUM** | Reminder schedule parsing | `POST /v1/ai/reminders/parse-schedule` — stub returns "not implemented" |
+| **LOW** | Admin evaluations endpoint | `POST /v1/admin/evaluations/run` — no route exists |
 | **LOW** | 13 prompt templates not created | Various workflow prompts |
 | **LOW** | 17 empty domain/integration scaffolds | `app/domains/*` and `app/integrations/*` — just `__init__.py` |
 | **LOW** | `tests/__init__.py` | Add package init |
