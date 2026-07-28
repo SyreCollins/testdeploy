@@ -53,7 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api_key_store._engine = db_engine
 
     if settings.internal_api_keys_list:
-        api_key_store.bootstrap_static_keys(settings.internal_api_keys_list)
+        api_key_store.bootstrap_static_keys(settings.internal_api_keys_list, settings.bootstrap_organization_id)
 
     app.state.logger.info(
         "app_starting",

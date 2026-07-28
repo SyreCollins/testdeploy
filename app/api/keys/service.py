@@ -20,7 +20,7 @@ class ApiKeyStore:
     _engine = None
     _rate_cache: dict[str, dict[str, float | int]] = {}
 
-    def bootstrap_static_keys(self, raw_keys: list[str]) -> None:
+    def bootstrap_static_keys(self, raw_keys: list[str], bootstrap_org_id: int | None = None) -> None:
         logger.info("bootstrap_static_keys_called", extra={"keys": raw_keys})
         with Session(self._engine) as session:
             existing = session.query(ApiKey).filter(ApiKey.label == "bootstrap").all()
@@ -41,6 +41,7 @@ class ApiKeyStore:
                     key_hash=self._hash_key(raw_key),
                     is_active=True,
                     is_admin=True,
+                    organization_id=bootstrap_org_id,
                 )
                 session.add(entry)
             session.commit()

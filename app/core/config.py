@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     pro_plan_rate_limit: int = 100
     enterprise_plan_rate_limit: int = 500
 
+    bootstrap_organization_id: int | None = None
+
     @property
     def internal_api_keys_list(self) -> list[str]:
         if not self.internal_api_keys:
