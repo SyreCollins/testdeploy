@@ -33,7 +33,7 @@ In your Clerk Dashboard, go to **Webhooks** and create a new endpoint:
 
 | Field | Value |
 |---|---|
-| **Endpoint URL** | `https://your-backend.com/v1/auth/webhook` |
+| **Endpoint URL** | `https://testdeploy-pyb7.onrender.com/v1/auth/webhook` |
 | **Subscribe to events** | `user.created`, `user.updated`, `organization.created`, `organization.updated`, `organization_membership.created` |
 
 Clerk will give you a **Signing Secret** (starts with `whsec_`). Add this to the backend's `.env`:
@@ -69,7 +69,7 @@ To fill in the frontend code below, I need:
 
 ```
 Clerk Publishable Key:    pk_test_xxxx
-Backend API URL:          https://your-backend.com
+Backend API URL:          https://testdeploy-pyb7.onrender.com
 ```
 
 ---
@@ -182,11 +182,9 @@ function ApiClient() {
   const { getToken } = useAuth();
 
   async function callApi(endpoint: string, options?: RequestInit) {
-    const token = await getToken({ template: "your-jwt-template-name" });
-    //                              ^ may need to specify template name
-    //                              try without first: await getToken()
+    const token = await getToken({ template: "zam-ai" });
 
-    const response = await fetch(`https://your-backend.com${endpoint}`, {
+    const response = await fetch(`https://testdeploy-pyb7.onrender.com${endpoint}`, {
       ...options,
       headers: {
         ...options?.headers,
@@ -330,7 +328,7 @@ Frontend shows:            The key ONCE, with copy button + warning to save it
 The generated key can be used for server-to-server calls without Clerk:
 
 ```bash
-curl -H "X-Zam-AI-Key: zam_abc123..." https://your-backend.com/v1/ai/medical-qa
+curl -H "X-Zam-AI-Key: zam_abc123..." https://testdeploy-pyb7.onrender.com/v1/ai/medical-qa
 ```
 
 ---
