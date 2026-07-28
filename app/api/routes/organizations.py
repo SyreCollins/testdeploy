@@ -20,7 +20,7 @@ def _get_session():
 
 
 def _get_org(request: Request, session: Session) -> Organization:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
     org = session.get(Organization, org_id)

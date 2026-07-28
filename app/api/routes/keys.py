@@ -23,7 +23,7 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 def create_key(body: CreateApiKeyRequest) -> CreateApiKeyResponse:
-    result = store.create_key(label=body.label, expires_at=body.expires_at)
+    result = store.create_key(label=body.label, expires_at=body.expires_at, organization_id=body.organization_id)
     return CreateApiKeyResponse(
         id=result["id"],
         label=result["label"],

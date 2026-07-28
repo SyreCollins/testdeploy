@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class CreateApiKeyRequest(BaseModel):
     label: str = Field(min_length=1, max_length=100, description="Human-readable label for the key")
     expires_at: datetime | None = None
+    organization_id: int | None = Field(default=None, description="Org to scope this key to (admin only)")
 
 
 class CreateApiKeyResponse(BaseModel):

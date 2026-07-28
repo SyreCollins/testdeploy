@@ -78,5 +78,14 @@ class InternalApiKeyMiddleware(BaseHTTPMiddleware):
         request.state.org_id = entry.get("org_id")
         request.state.project_id = entry.get("project_id")
         request.state.is_admin = entry.get("is_admin", False)
+
+        caller_org = request.headers.get("x-caller-organization")
+        if caller_org and entry.get("is_admin"):
+            try:
+                request.state.org_id = int(caller_org)
+            except (ValueError, TypeError):
+                pass
+
+        request.state.organization_id = request.state.org_id
         return await call_next(request)
 
