@@ -3,12 +3,14 @@ from collections.abc import Callable
 
 import httpx
 import jwt
+from sqlmodel import Session, select
 from starlette import status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from app.core.request_context import get_request_id
+from app.db.models.platform import Organization
 
 _JWKS_CACHE: dict[str, list[dict]] = {}
 _JWKS_CACHE_AT = 0.0
@@ -62,7 +64,9 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
 
             request.state.auth_type = "clerk_jwt"
             request.state.clerk_user_id = payload.get("sub")
-            request.state.organization_id = _extract_org_id(payload)
+            request.state.organization_id = _resolve_org_id(
+                payload.get("org_id"), getattr(request.app.state, "db_engine", None),
+            )
             request.state.clerk_session_id = payload.get("sid")
             request.state.clerk_jwt_payload = payload
 
@@ -84,13 +88,21 @@ class ClerkAuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-def _extract_org_id(payload: dict) -> int | None:
-    org_id = payload.get("org_id")
-    if org_id is not None:
-        try:
-            return int(org_id)
-        except (ValueError, TypeError):
-            return None
+def _resolve_org_id(clerk_org_id: str | None, engine) -> int | None:
+    if clerk_org_id is None:
+        return None
+    try:
+        return int(clerk_org_id)
+    except (ValueError, TypeError):
+        pass
+    if engine is None:
+        return None
+    with Session(engine) as session:
+        org = session.exec(
+            select(Organization).where(Organization.clerk_org_id == clerk_org_id)
+        ).first()
+        if org is not None:
+            return org.id
     return None
 
 
