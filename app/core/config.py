@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     clerk_publishable_key: str = ""
     clerk_webhook_secret: str = ""
 
+    cors_allowed_origins: str = "http://localhost:5173"
+
     free_plan_max_keys: int = 3
     free_plan_rate_limit: int = 20
     pro_plan_rate_limit: int = 100
