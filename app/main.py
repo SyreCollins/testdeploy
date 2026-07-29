@@ -113,6 +113,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(app)
 
+    app.add_middleware(ClerkAuthMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(InternalApiKeyMiddleware, settings=settings)
+    app.add_middleware(UsageTracker, engine=db_engine)
+    app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
+
     origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
@@ -121,13 +128,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    app.add_middleware(ClerkAuthMiddleware)
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(InternalApiKeyMiddleware, settings=settings)
-    app.add_middleware(UsageTracker, engine=db_engine)
-    app.add_middleware(RequestIdMiddleware)
-    app.add_middleware(RequestLoggingMiddleware)
 
     app.include_router(admin_router, prefix="/v1", tags=["admin"])
     app.include_router(health_router, prefix="/v1", tags=["system"])

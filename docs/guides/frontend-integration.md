@@ -68,7 +68,7 @@ ZAM_AI_CLERK_PUBLISHABLE_KEY=pk_test_xxxx
 To fill in the frontend code below, I need:
 
 ```
-Clerk Publishable Key:    pk_test_xxxx
+Clerk Publishable Key:    pk_test_ZGlzdGluY3QtcmF5LTQ1LmNsZXJrLmFjY291bnRzLmRldiQ
 Backend API URL:          https://testdeploy-pyb7.onrender.com
 ```
 
@@ -87,7 +87,7 @@ npm install @clerk/clerk-react
 ```tsx
 import { ClerkProvider } from "@clerk/clerk-react";
 
-const CLERK_PUBLISHABLE_KEY = "pk_test_xxxx";  // ← from Clerk Dashboard
+const CLERK_PUBLISHABLE_KEY = "pk_test_ZGlzdGluY3QtcmF5LTQ1LmNsZXJrLmFjY291bnRzLmRldiQ"
 
 function App() {
   return (
@@ -428,16 +428,16 @@ ZAM_AI_CLERK_WEBHOOK_SECRET=whsec_xxxx
 # Bootstrap org ID (for admin keys created at startup)
 ZAM_AI_BOOTSTRAP_ORGANIZATION_ID=1
 ```
-
+**dont worry about this**
 ---
 
 ## What I Need From You
 
 To make this guide concrete (no placeholders), please provide:
 
-1. **Clerk Publishable Key** — from Clerk Dashboard → API Keys
-2. **Backend deployed URL** — the Render/Cloud Run URL
-3. **JWT template name** — if you created a custom template (otherwise the default "default" is used)
+1. **Clerk Publishable Key** — pk_test_ZGlzdGluY3QtcmF5LTQ1LmNsZXJrLmFjY291bnRzLmRldiQ
+2. **Backend deployed URL** — [the Render/Cloud Run URL](https://testdeploy-pyb7.onrender.com)
+3. **JWT template name** — zam-ai
 4. **Any Clerk domain** — so I can verify the JWT issuer URL format
 
 Paste them and I'll update the guide with real values.
