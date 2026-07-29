@@ -146,7 +146,7 @@ class ListApiKeysResponse(BaseModel):
 
 @router.get("/me/api-keys")
 async def list_org_api_keys(request: Request) -> ListApiKeysResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
     keys = api_key_store.list_keys(organization_id=org_id)
@@ -172,7 +172,7 @@ class CreateApiKeyResponse(BaseModel):
 
 @router.post("/me/api-keys", status_code=201)
 async def create_org_api_key(request: Request, body: CreateApiKeyRequest) -> CreateApiKeyResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
     result = api_key_store.create_key(
@@ -190,7 +190,7 @@ class RotateApiKeyResponse(BaseModel):
 
 @router.post("/me/api-keys/{key_id}/rotate")
 async def rotate_org_api_key(request: Request, key_id: str) -> RotateApiKeyResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
 
@@ -211,7 +211,7 @@ class RevokeApiKeyResponse(BaseModel):
 
 @router.post("/me/api-keys/{key_id}/revoke")
 async def revoke_org_api_key(request: Request, key_id: str) -> RevokeApiKeyResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
 
@@ -375,7 +375,7 @@ async def list_project_api_keys(request: Request, project_id: int) -> ProjectApi
 
 @router.post("/me/projects/{project_id}/api-keys", status_code=201)
 async def create_project_api_key(request: Request, project_id: int, body: CreateApiKeyRequest) -> CreateApiKeyResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
     result = api_key_store.create_key(
@@ -389,7 +389,7 @@ async def create_project_api_key(request: Request, project_id: int, body: Create
 
 @router.post("/me/projects/{project_id}/api-keys/{key_id}/rotate")
 async def rotate_project_api_key(request: Request, project_id: int, key_id: str) -> RotateApiKeyResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
     entry = api_key_store.get_key(key_id)
@@ -403,7 +403,7 @@ async def rotate_project_api_key(request: Request, project_id: int, key_id: str)
 
 @router.post("/me/projects/{project_id}/api-keys/{key_id}/revoke")
 async def revoke_project_api_key(request: Request, project_id: int, key_id: str) -> RevokeApiKeyResponse:
-    org_id = getattr(request.state, "org_id", None)
+    org_id = getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)
     if org_id is None:
         raise HTTPException(status_code=401, detail="Organization not identified")
     entry = api_key_store.get_key(key_id)
