@@ -14,7 +14,7 @@ class ConsentFlags(BaseModel):
 
 
 class AuthorizationContext(BaseModel):
-    workflow: str = Field(examples=["medical_qa"])
+    workflow: str = Field(default="medical_qa", examples=["medical_qa"])
     consent_flags: ConsentFlags = Field(default_factory=ConsentFlags)
     context_scope: list[str] = Field(default_factory=lambda: ["age", "allergies", "current_medications"])
 
