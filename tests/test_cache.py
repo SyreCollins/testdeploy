@@ -1,5 +1,4 @@
 import time
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -38,7 +37,10 @@ class TestResponseCache:
 
     def test_get_returns_deepcopy(self):
         cache = ResponseCache()
-        result = WorkflowResult(success=True, response_text="original", workflow="test", structured_result={"key": "val"})
+        result = WorkflowResult(
+            success=True, response_text="original", workflow="test",
+            structured_result={"key": "val"},
+        )
         key = cache.make_key("test", q="x")
         cache.set(key, result)
         cached = cache.get(key)
@@ -109,7 +111,6 @@ class TestResponseCache:
 
 @pytest.mark.asyncio
 async def test_orchestrator_returns_cached_result(app):
-    from app.ai.orchestrator.models import ConversationState
 
     orch = app.state.orchestrator
     orch._cache_enabled = True

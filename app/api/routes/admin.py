@@ -431,7 +431,11 @@ def admin_analytics_orgs(
             UsageRecord.date <= to_date,
         ).group_by(UsageRecord.organization_id)
 
-        order_col = func.sum(UsageRecord.request_count) if sort_by == "requests" else func.sum(UsageRecord.prompt_tokens)
+        order_col = (
+            func.sum(UsageRecord.request_count)
+            if sort_by == "requests"
+            else func.sum(UsageRecord.prompt_tokens)
+        )
         usage_query = usage_query.order_by(order_col.desc()).limit(limit)
         usage_rows = session.exec(usage_query).all()
 

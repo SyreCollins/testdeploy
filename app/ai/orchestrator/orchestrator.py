@@ -244,7 +244,11 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        cached = self._check_cache("medical_qa", req_id, question=question, patient_age=patient_age, patient_sex=patient_sex, known_conditions=safety_ctx.known_conditions, allergies=allergies)
+        cached = self._check_cache(
+            "medical_qa", req_id,
+            question=question, patient_age=patient_age, patient_sex=patient_sex,
+            known_conditions=safety_ctx.known_conditions, allergies=allergies,
+        )
         if cached is not None:
             return cached
 
@@ -327,7 +331,11 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
-        self._store_cache("medical_qa", workflow_result, question=question, patient_age=patient_age, patient_sex=patient_sex, known_conditions=safety_ctx.known_conditions, allergies=allergies)
+        self._store_cache(
+            "medical_qa", workflow_result,
+            question=question, patient_age=patient_age, patient_sex=patient_sex,
+            known_conditions=safety_ctx.known_conditions, allergies=allergies,
+        )
         return workflow_result
 
     async def run_symptom_guidance(
@@ -370,7 +378,11 @@ class ConversationOrchestrator:
                 },
             )
 
-        cached = self._check_cache("symptom_guidance", req_id, symptoms=symptoms, patient_age=patient_age, patient_sex=patient_sex, known_conditions=known_conditions or [])
+        cached = self._check_cache(
+            "symptom_guidance", req_id,
+            symptoms=symptoms, patient_age=patient_age, patient_sex=patient_sex,
+            known_conditions=known_conditions or [],
+        )
         if cached is not None:
             return cached
 
@@ -425,7 +437,11 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
-        self._store_cache("symptom_guidance", workflow_result, symptoms=symptoms, patient_age=patient_age, patient_sex=patient_sex, known_conditions=known_conditions or [])
+        self._store_cache(
+            "symptom_guidance", workflow_result,
+            symptoms=symptoms, patient_age=patient_age, patient_sex=patient_sex,
+            known_conditions=known_conditions or [],
+        )
         return workflow_result
 
     async def run_drug_info(
@@ -552,7 +568,11 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        cached = self._check_cache("interaction_check", req_id, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        cached = self._check_cache(
+            "interaction_check", req_id,
+            drug_names=sorted(drug_names), patient_age=patient_age,
+            known_conditions=known_conditions or [], current_medications=current_medications or [],
+        )
         if cached is not None:
             return cached
 
@@ -632,7 +652,11 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
-        self._store_cache("interaction_check", workflow_result, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        self._store_cache(
+            "interaction_check", workflow_result,
+            drug_names=sorted(drug_names), patient_age=patient_age,
+            known_conditions=known_conditions or [], current_medications=current_medications or [],
+        )
         return workflow_result
 
     async def run_contraindication_check(
@@ -666,7 +690,12 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        cached = self._check_cache("contraindication_check", req_id, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], allergies=allergies or [], current_medications=current_medications or [])
+        cached = self._check_cache(
+            "contraindication_check", req_id,
+            drug_names=sorted(drug_names), patient_age=patient_age,
+            known_conditions=known_conditions or [], allergies=allergies or [],
+            current_medications=current_medications or [],
+        )
         if cached is not None:
             return cached
 
@@ -744,7 +773,12 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
-        self._store_cache("contraindication_check", workflow_result, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], allergies=allergies or [], current_medications=current_medications or [])
+        self._store_cache(
+            "contraindication_check", workflow_result,
+            drug_names=sorted(drug_names), patient_age=patient_age,
+            known_conditions=known_conditions or [], allergies=allergies or [],
+            current_medications=current_medications or [],
+        )
         return workflow_result
 
     async def run_dosage_verify(
@@ -775,7 +809,11 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        cached = self._check_cache("dosage_verify", req_id, medication=medication, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        cached = self._check_cache(
+            "dosage_verify", req_id,
+            medication=medication, patient_age=patient_age,
+            known_conditions=known_conditions or [], current_medications=current_medications or [],
+        )
         if cached is not None:
             return cached
 
@@ -846,7 +884,11 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
-        self._store_cache("dosage_verify", workflow_result, medication=medication, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        self._store_cache(
+            "dosage_verify", workflow_result,
+            medication=medication, patient_age=patient_age,
+            known_conditions=known_conditions or [], current_medications=current_medications or [],
+        )
         return workflow_result
 
     async def run_prescription_explain(
@@ -878,7 +920,11 @@ class ConversationOrchestrator:
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
 
-        cached = self._check_cache("prescription_explain", req_id, prescription_text=prescription_text, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        cached = self._check_cache(
+            "prescription_explain", req_id,
+            prescription_text=prescription_text, patient_age=patient_age,
+            known_conditions=known_conditions or [], current_medications=current_medications or [],
+        )
         if cached is not None:
             return cached
 
@@ -948,7 +994,11 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
-        self._store_cache("prescription_explain", workflow_result, prescription_text=prescription_text, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        self._store_cache(
+            "prescription_explain", workflow_result,
+            prescription_text=prescription_text, patient_age=patient_age,
+            known_conditions=known_conditions or [], current_medications=current_medications or [],
+        )
         return workflow_result
 
     async def run_workflow(

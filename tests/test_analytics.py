@@ -1,10 +1,9 @@
-import os
 from datetime import UTC, datetime
 
 import pytest
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 from app.db.engine import get_engine
 from app.db.models.platform import Organization
 from app.db.models.usage import UsageRecord
@@ -17,16 +16,30 @@ def _seed_usage(app, org_id: int = BOOTSTRAP_ORG_ID):
     with Session(engine) as session:
         org = session.get(Organization, org_id)
         if org is None:
-            org = Organization(id=org_id, clerk_org_id="org_test", name="Test Org", slug="test-org", plan="free", is_active=True, created_at=datetime.now(UTC))
+            org = Organization(
+                id=org_id, clerk_org_id="org_test", name="Test Org",
+                slug="test-org", plan="free", is_active=True,
+                created_at=datetime.now(UTC),
+            )
             session.add(org)
             session.commit()
 
         records = [
-            UsageRecord(organization_id=org_id, date="2026-07-28", endpoint="/v1/ai/medical-qa", request_count=10, prompt_tokens=1000, completion_tokens=500),
-            UsageRecord(organization_id=org_id, date="2026-07-28", endpoint="/v1/ai/drug-info", request_count=5, prompt_tokens=500, completion_tokens=250),
-            UsageRecord(organization_id=org_id, date="2026-07-29", endpoint="/v1/ai/medical-qa", request_count=20, prompt_tokens=2000, completion_tokens=1000),
-            UsageRecord(organization_id=org_id, date="2026-07-29", endpoint="/v1/ai/interactions/check", request_count=8, prompt_tokens=800, completion_tokens=400),
-            UsageRecord(organization_id=org_id, date="2026-07-30", endpoint="/v1/ai/medical-qa", request_count=15, prompt_tokens=1500, completion_tokens=750),
+            UsageRecord(organization_id=org_id, date="2026-07-28",
+                        endpoint="/v1/ai/medical-qa", request_count=10,
+                        prompt_tokens=1000, completion_tokens=500),
+            UsageRecord(organization_id=org_id, date="2026-07-28",
+                        endpoint="/v1/ai/drug-info", request_count=5,
+                        prompt_tokens=500, completion_tokens=250),
+            UsageRecord(organization_id=org_id, date="2026-07-29",
+                        endpoint="/v1/ai/medical-qa", request_count=20,
+                        prompt_tokens=2000, completion_tokens=1000),
+            UsageRecord(organization_id=org_id, date="2026-07-29",
+                        endpoint="/v1/ai/interactions/check", request_count=8,
+                        prompt_tokens=800, completion_tokens=400),
+            UsageRecord(organization_id=org_id, date="2026-07-30",
+                        endpoint="/v1/ai/medical-qa", request_count=15,
+                        prompt_tokens=1500, completion_tokens=750),
         ]
         for r in records:
             session.add(r)
@@ -125,7 +138,11 @@ class TestAdminAnalytics:
         with Session(engine) as session:
             existing = session.get(Organization, org_id)
             if existing is None:
-                org = Organization(id=org_id, clerk_org_id=f"org_{org_id}", name=name, slug=slug, plan="free", is_active=True, created_at=datetime.now(UTC))
+                org = Organization(
+                    id=org_id, clerk_org_id=f"org_{org_id}", name=name,
+                    slug=slug, plan="free", is_active=True,
+                    created_at=datetime.now(UTC),
+                )
                 session.add(org)
                 session.commit()
 
@@ -152,7 +169,9 @@ class TestAdminAnalytics:
         engine = get_engine(get_settings().database_url)
         with Session(engine) as session:
             records = [
-                UsageRecord(organization_id=2, date="2026-07-28", endpoint="/v1/ai/medical-qa", request_count=100, prompt_tokens=10000, completion_tokens=5000),
+                UsageRecord(organization_id=2, date="2026-07-28",
+                            endpoint="/v1/ai/medical-qa", request_count=100,
+                            prompt_tokens=10000, completion_tokens=5000),
             ]
             for r in records:
                 session.add(r)
@@ -170,7 +189,9 @@ class TestAdminAnalytics:
         self._ensure_org_exists(app, 2, "Org B", "org-b")
         engine = get_engine(get_settings().database_url)
         with Session(engine) as session:
-            session.add(UsageRecord(organization_id=2, date="2026-07-28", endpoint="/v1/ai/medical-qa", request_count=100, prompt_tokens=10000, completion_tokens=5000))
+            session.add(UsageRecord(organization_id=2, date="2026-07-28",
+                                    endpoint="/v1/ai/medical-qa", request_count=100,
+                                    prompt_tokens=10000, completion_tokens=5000))
             session.commit()
 
         resp = authed_client.get("/v1/admin/analytics/orgs?from=2026-07-28&to=2026-07-30")

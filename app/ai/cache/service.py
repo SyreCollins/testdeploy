@@ -15,7 +15,7 @@ class ResponseCache:
     def __init__(self, default_ttl: int = 3600, max_size: int = 1000) -> None:
         self._default_ttl = default_ttl
         self._max_size = max_size
-        self._cache: dict[str, tuple[float, "WorkflowResult"]] = {}
+        self._cache: dict[str, tuple[float, WorkflowResult]] = {}
 
     def make_key(self, workflow: str, **kwargs: Any) -> str:
         serializable = {}
@@ -36,7 +36,6 @@ class ResponseCache:
         return f"{workflow}_{h}"
 
     def get(self, key: str) -> "WorkflowResult | None":
-        from app.ai.orchestrator.models import WorkflowResult
 
         entry = self._cache.get(key)
         if entry is None:
