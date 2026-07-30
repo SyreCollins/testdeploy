@@ -5,7 +5,18 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 
 ---
 
-## State (~281 tests pass, 0 lint errors)
+## State (~306 tests pass, 0 lint errors)
+
+### ✅ Completed (this session — 2026-07-30)
+
+| Area | Details |
+|---|---|
+| **Result Caching Layer** | `app/ai/cache/service.py` — `ResponseCache` with sha256-based `make_key()`, `get()`, `set()` (TTL), `invalidate()` (prefix match), max-size LRU eviction, deepcopy safety. Integrated into `ConversationOrchestrator` — `_check_cache()` runs before safety pre-retrieval, `_store_cache()` before final return in all 7 workflow methods. `cache` param added to `__init__`. Config: `response_cache_enabled`, `response_cache_ttl`, `response_cache_max_size` in `Settings`. Bugfix: `safety_ctx.allergies` doesn't exist on `SafetyContext` — replaced with method's `allergies` parameter directly. |
+| **Usage Analytics API** | `app/api/routes/analytics.py` — org-level: `GET /v1/organizations/me/analytics/summary` (totals), `/trends` (daily breakdown), `/top-endpoints` (sortable, limit). `app/api/routes/admin.py` — admin-level: `GET /v1/admin/analytics/overview` (cross-org totals, top workflow, daily avg), `/admin/analytics/orgs` (per-org breakdown, sortable by requests/tokens). Both use `UsageRecord` table (not audit traces). Bootstrap keys with no `bootstrap_organization_id` get 401 on org endpoints; admin endpoints work cross-org via `is_admin` check. |
+| **Admin router prefix fix** | Removed `prefix="/v1"` from `include_router(admin_router)` — admin_router already self-prefixes, was creating `/v1/v1/admin/...`. |
+| **Cache tests** | `tests/test_cache.py` — 13 unit tests: key determinism, TTL expiry, invalidation, max-size eviction, deepcopy isolation. |
+| **Analytics tests** | `tests/test_analytics.py` — 12 endpoint tests: org + admin endpoints, correct totals, trend gaps, top-endpoints sort/limit, no-data edge cases, bootstrap key handling (must create fresh key with org_id for analytics tests). |
+| **ENDPOINTS.ts updated** | Added `ANALYTICS_SUMMARY`, `ANALYTICS_TRENDS`, `ANALYTICS_TOP_ENDPOINTS` under ORGANIZATIONS; `ANALYTICS_OVERVIEW`, `ANALYTICS_ORGS` under ADMIN. |
 
 ### ✅ Completed (this session — 2026-07-28)
 
@@ -111,6 +122,12 @@ Python 3.11+ FastAPI medical RAG backend for Zamda Health. Core rule: no LLM res
 - **DB schema drift on SQLite**: `SQLModel.metadata.create_all(checkfirst=True)` does not `ALTER TABLE` — new columns are silently ignored on existing tables. Always create tables from scratch in tests (`reset_engine()` drops all) or use explicit migrations.
 - **State attribute convention**: `InternalApiKeyMiddleware` sets `request.state.org_id` and `request.state.organization_id`; `ClerkAuthMiddleware` sets `request.state.organization_id`. Route helpers should fall back: `getattr(request.state, "org_id", None) or getattr(request.state, "organization_id", None)` (see `_org_id()` in `ai.py`, `_get_org()` in `organizations.py`, and `UsageTracker`).
 - **Rate limit persistence**: Rate limit windows are ephemeral (in-memory `_rate_cache` dict). Lost on restart — acceptable for v1, consider Redis for production.
+
+### 🔜 Next Up
+
+| Priority | Feature | What to do |
+|---|---|---|
+| **HIGH** | **Backend feedback review** | Frontend team to review caching + analytics features and provide feedback / iteration requests. |
 
 ### ❌ Remaining Gaps
 

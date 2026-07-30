@@ -5,6 +5,7 @@ import uuid
 from typing import Any
 
 from app.ai.audit import AuditTraceWriter
+from app.ai.cache import ResponseCache
 from app.ai.citation import CitationEngine
 from app.ai.gateway.base import BaseModelProvider, ModelResponse
 from app.ai.orchestrator.intent_classifier import IntentClassifier
@@ -27,6 +28,7 @@ class ConversationOrchestrator:
         model_provider: BaseModelProvider | None = None,
         settings: Any | None = None,
         audit_writer: AuditTraceWriter | None = None,
+        cache: ResponseCache | None = None,
     ) -> None:
         self.retrieval = retrieval_service
         self.prompt_mgr = prompt_manager
@@ -36,6 +38,8 @@ class ConversationOrchestrator:
         self.scorer = ConfidenceScorer()
         self.citations = CitationEngine()
         self.audit = audit_writer or AuditTraceWriter()
+        self._cache = cache
+        self._cache_enabled = bool(cache)
 
     @property
     def model_provider(self) -> BaseModelProvider:
@@ -186,6 +190,23 @@ class ConversationOrchestrator:
             retryable=True,
         )
 
+    def _check_cache(self, workflow: str, req_id: str, **kwargs: object) -> WorkflowResult | None:
+        if not self._cache_enabled:
+            return None
+        key = self._cache.make_key(workflow=workflow, **kwargs)
+        cached = self._cache.get(key)
+        if cached is not None:
+            cached.audit_metadata["trace_id"] = req_id
+            self.audit.record_event(req_id, "cache_hit", {"workflow": workflow})
+            self.audit.end_trace(req_id, {"outcome": "cache_hit"})
+        return cached
+
+    def _store_cache(self, workflow: str, result: WorkflowResult, **kwargs: object) -> None:
+        if not self._cache_enabled or not result.success:
+            return
+        key = self._cache.make_key(workflow=workflow, **kwargs)
+        self._cache.set(key, result)
+
     async def run_medical_qa(
         self,
         question: str,
@@ -222,6 +243,10 @@ class ConversationOrchestrator:
             result.audit_metadata["trace_id"] = req_id
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
+
+        cached = self._check_cache("medical_qa", req_id, question=question, patient_age=patient_age, patient_sex=patient_sex, known_conditions=safety_ctx.known_conditions, allergies=allergies)
+        if cached is not None:
+            return cached
 
         results = await self.retrieval.search(query=question, limit=10)
         self.audit.record_event(req_id, "retrieval", {
@@ -278,7 +303,7 @@ class ConversationOrchestrator:
             "response_length": len(response.text),
         })
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="medical_qa",
@@ -302,6 +327,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("medical_qa", workflow_result, question=question, patient_age=patient_age, patient_sex=patient_sex, known_conditions=safety_ctx.known_conditions, allergies=allergies)
+        return workflow_result
 
     async def run_symptom_guidance(
         self,
@@ -343,6 +370,10 @@ class ConversationOrchestrator:
                 },
             )
 
+        cached = self._check_cache("symptom_guidance", req_id, symptoms=symptoms, patient_age=patient_age, patient_sex=patient_sex, known_conditions=known_conditions or [])
+        if cached is not None:
+            return cached
+
         patient_context = self._build_patient_context_dict(
             age=patient_age,
             sex=patient_sex,
@@ -374,7 +405,7 @@ class ConversationOrchestrator:
         if follow_up_questions:
             answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="symptom_guidance",
@@ -394,6 +425,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("symptom_guidance", workflow_result, symptoms=symptoms, patient_age=patient_age, patient_sex=patient_sex, known_conditions=known_conditions or [])
+        return workflow_result
 
     async def run_drug_info(
         self,
@@ -417,6 +450,10 @@ class ConversationOrchestrator:
             result.audit_metadata["trace_id"] = req_id
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
+
+        cached = self._check_cache("drug_info", req_id, drug_name=drug_name, requested_sections=requested_sections)
+        if cached is not None:
+            return cached
 
         results = await self.retrieval.search(
             query=drug_name,
@@ -461,7 +498,7 @@ class ConversationOrchestrator:
         if follow_up_questions:
             answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="drug_info",
@@ -482,6 +519,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("drug_info", workflow_result, drug_name=drug_name, requested_sections=requested_sections)
+        return workflow_result
 
     async def run_interaction_check(
         self,
@@ -512,6 +551,10 @@ class ConversationOrchestrator:
             result.audit_metadata["trace_id"] = req_id
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
+
+        cached = self._check_cache("interaction_check", req_id, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        if cached is not None:
+            return cached
 
         tasks = [self.retrieval.search(query=drug, limit=5) for drug in drug_names]
         all_results: list[dict] = []
@@ -563,7 +606,7 @@ class ConversationOrchestrator:
         if follow_up_questions:
             answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="interaction_check",
@@ -589,6 +632,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("interaction_check", workflow_result, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        return workflow_result
 
     async def run_contraindication_check(
         self,
@@ -620,6 +665,10 @@ class ConversationOrchestrator:
             result.audit_metadata["trace_id"] = req_id
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
+
+        cached = self._check_cache("contraindication_check", req_id, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], allergies=allergies or [], current_medications=current_medications or [])
+        if cached is not None:
+            return cached
 
         tasks = [self.retrieval.search(query=drug, limit=5) for drug in drug_names]
         all_results: list[dict] = []
@@ -675,7 +724,7 @@ class ConversationOrchestrator:
         if follow_up_questions:
             answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="contraindication_check",
@@ -695,6 +744,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("contraindication_check", workflow_result, drug_names=sorted(drug_names), patient_age=patient_age, known_conditions=known_conditions or [], allergies=allergies or [], current_medications=current_medications or [])
+        return workflow_result
 
     async def run_dosage_verify(
         self,
@@ -723,6 +774,10 @@ class ConversationOrchestrator:
             result.audit_metadata["trace_id"] = req_id
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
+
+        cached = self._check_cache("dosage_verify", req_id, medication=medication, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        if cached is not None:
+            return cached
 
         results = await self.retrieval.search(query=drug_name, limit=10)
         self.audit.record_event(req_id, "retrieval", {
@@ -772,7 +827,7 @@ class ConversationOrchestrator:
         if follow_up_questions:
             answer_text = re.sub(r"\n## Follow-up Questions\n.*", "", answer_text, flags=re.DOTALL).strip()
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="dosage_verify",
@@ -791,6 +846,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("dosage_verify", workflow_result, medication=medication, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        return workflow_result
 
     async def run_prescription_explain(
         self,
@@ -820,6 +877,10 @@ class ConversationOrchestrator:
             result.audit_metadata["trace_id"] = req_id
             self.audit.end_trace(req_id, {"outcome": "blocked"})
             return result
+
+        cached = self._check_cache("prescription_explain", req_id, prescription_text=prescription_text, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        if cached is not None:
+            return cached
 
         results = await self.retrieval.search(query=prescription_text[:500], limit=10)
         self.audit.record_event(req_id, "retrieval", {
@@ -867,7 +928,7 @@ class ConversationOrchestrator:
             if not s.get("citation_ids") and i < len(citations):
                 s["citation_ids"] = [c["citation_id"] for c in citations[:5]]
 
-        return WorkflowResult(
+        workflow_result = WorkflowResult(
             success=True,
             response_text=answer_text,
             workflow="prescription_explain",
@@ -887,6 +948,8 @@ class ConversationOrchestrator:
                 "follow_up_questions": follow_up_questions,
             },
         )
+        self._store_cache("prescription_explain", workflow_result, prescription_text=prescription_text, patient_age=patient_age, known_conditions=known_conditions or [], current_medications=current_medications or [])
+        return workflow_result
 
     async def run_workflow(
         self,

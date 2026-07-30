@@ -42,6 +42,9 @@ export const ENDPOINTS = {
     API_KEYS: "/v1/organizations/me/api-keys",
     API_KEY_ROTATE: "/v1/organizations/me/api-keys/{key_id}/rotate",
     API_KEY_REVOKE: "/v1/organizations/me/api-keys/{key_id}/revoke",
+    ANALYTICS_SUMMARY: "/v1/organizations/me/analytics/summary",
+    ANALYTICS_TRENDS: "/v1/organizations/me/analytics/trends",
+    ANALYTICS_TOP_ENDPOINTS: "/v1/organizations/me/analytics/top-endpoints",
   } as const,
 
   PROJECTS: {
@@ -72,6 +75,8 @@ export const ENDPOINTS = {
     AUDIT_TRACE: "/v1/admin/audit/traces/{trace_id}",
 
     USAGE: "/v1/admin/usage",
+    ANALYTICS_OVERVIEW: "/v1/admin/analytics/overview",
+    ANALYTICS_ORGS: "/v1/admin/analytics/orgs",
   } as const,
 } as const;
 

@@ -60,6 +60,10 @@ class Settings(BaseSettings):
 
     bootstrap_organization_id: int | None = None
 
+    response_cache_enabled: bool = True
+    response_cache_ttl: int = 3600
+    response_cache_max_size: int = 1000
+
     @property
     def internal_api_keys_list(self) -> list[str]:
         if not self.internal_api_keys:

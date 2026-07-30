@@ -5,12 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
 from app.ai.audit import AuditTraceWriter
+from app.ai.cache import ResponseCache
 from app.ai.gateway import get_model_provider
 from app.ai.orchestrator import ConversationOrchestrator
 from app.ai.prompts import PromptManager
 from app.api.keys.service import store as api_key_store
 from app.api.routes.admin import router as admin_router
 from app.api.routes.ai import router as ai_router
+from app.api.routes.analytics import router as analytics_router
 from app.api.routes.audit import router as audit_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
@@ -103,12 +105,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.logger.warning("No model provider configured — will use per-request fallback")
         model_provider = None
 
+    response_cache = ResponseCache(
+        default_ttl=settings.response_cache_ttl,
+        max_size=settings.response_cache_max_size,
+    ) if settings.response_cache_enabled else None
+    app.state.response_cache = response_cache
+
     app.state.orchestrator = ConversationOrchestrator(
         retrieval_service=app.state.retrieval_service,
         prompt_manager=app.state.prompt_manager,
         model_provider=model_provider,
         settings=settings,
         audit_writer=app.state.audit_writer,
+        cache=response_cache,
     )
 
     register_exception_handlers(app)
@@ -129,10 +138,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(admin_router, prefix="/v1", tags=["admin"])
+    app.include_router(admin_router, tags=["admin"])
     app.include_router(health_router, prefix="/v1", tags=["system"])
     app.include_router(retrieval_router, prefix="/v1", tags=["retrieval"])
     app.include_router(ai_router, prefix="/v1", tags=["ai"])
+    app.include_router(analytics_router, tags=["analytics"])
     app.include_router(keys_router, prefix="/v1/admin", tags=["admin"])
     app.include_router(audit_router, prefix="/v1", tags=["audit"])
     app.include_router(auth_router)

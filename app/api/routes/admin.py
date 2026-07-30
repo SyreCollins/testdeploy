@@ -317,3 +317,148 @@ def list_usage(
                 unique_endpoints=eps or 0,
             ))
         return ListUsageResponse(records=records, total=len(records))
+
+
+class AdminOverviewResponse(BaseModel):
+    total_requests: int = 0
+    total_organizations: int = 0
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    daily_avg_requests: float = 0
+    top_workflow: str = ""
+    period_days: int = 0
+    from_date: str
+    to_date: str
+
+
+class AdminOrgAnalytics(BaseModel):
+    organization_id: int
+    organization_name: str
+    organization_slug: str
+    total_requests: int = 0
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+
+
+class AdminOrgAnalyticsResponse(BaseModel):
+    organizations: list[AdminOrgAnalytics]
+    total: int
+    from_date: str
+    to_date: str
+
+
+@router.get("/analytics/overview")
+def admin_analytics_overview(
+    request: Request,
+    from_date: str = Query(default=None, alias="from"),
+    to_date: str = Query(default=None, alias="to"),
+) -> AdminOverviewResponse:
+    _require_admin(request)
+    from datetime import UTC, datetime, timedelta
+
+    if not to_date:
+        to_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    if not from_date:
+        from_date = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    with Session(get_engine(get_settings().database_url)) as session:
+        org_count = session.exec(select(func.count()).select_from(Organization)).one()
+
+        agg = session.exec(
+            select(
+                func.sum(UsageRecord.request_count),
+                func.sum(UsageRecord.prompt_tokens),
+                func.sum(UsageRecord.completion_tokens),
+            ).where(
+                UsageRecord.date >= from_date,
+                UsageRecord.date <= to_date,
+            )
+        ).one()
+        total_requests = agg[0] or 0
+        total_prompt = agg[1] or 0
+        total_completion = agg[2] or 0
+
+        top_endpoint_row = session.exec(
+            select(UsageRecord.endpoint, func.sum(UsageRecord.request_count))
+            .where(UsageRecord.date >= from_date, UsageRecord.date <= to_date)
+            .group_by(UsageRecord.endpoint)
+            .order_by(func.sum(UsageRecord.request_count).desc())
+            .limit(1)
+        ).first()
+        top_workflow = top_endpoint_row[0] if top_endpoint_row else ""
+
+    from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+    to_dt = datetime.strptime(to_date, "%Y-%m-%d")
+    period_days = max(1, (to_dt - from_dt).days + 1)
+
+    return AdminOverviewResponse(
+        total_requests=total_requests,
+        total_organizations=org_count,
+        total_prompt_tokens=total_prompt,
+        total_completion_tokens=total_completion,
+        daily_avg_requests=round(total_requests / period_days, 1),
+        top_workflow=top_workflow,
+        period_days=period_days,
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+
+@router.get("/analytics/orgs")
+def admin_analytics_orgs(
+    request: Request,
+    from_date: str = Query(default=None, alias="from"),
+    to_date: str = Query(default=None, alias="to"),
+    limit: int = Query(default=20, le=100),
+    sort_by: str = Query(default="requests"),
+) -> AdminOrgAnalyticsResponse:
+    _require_admin(request)
+    from datetime import UTC, datetime, timedelta
+
+    if not to_date:
+        to_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    if not from_date:
+        from_date = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    with Session(get_engine(get_settings().database_url)) as session:
+        usage_query = select(
+            UsageRecord.organization_id,
+            func.sum(UsageRecord.request_count),
+            func.sum(UsageRecord.prompt_tokens),
+            func.sum(UsageRecord.completion_tokens),
+        ).where(
+            UsageRecord.date >= from_date,
+            UsageRecord.date <= to_date,
+        ).group_by(UsageRecord.organization_id)
+
+        order_col = func.sum(UsageRecord.request_count) if sort_by == "requests" else func.sum(UsageRecord.prompt_tokens)
+        usage_query = usage_query.order_by(order_col.desc()).limit(limit)
+        usage_rows = session.exec(usage_query).all()
+
+        org_ids = [r[0] for r in usage_rows]
+        orgs = {}
+        if org_ids:
+            org_rows = session.exec(
+                select(Organization).where(Organization.id.in_(org_ids))
+            ).all()
+            orgs = {o.id: o for o in org_rows}
+
+        organizations = []
+        for row in usage_rows:
+            org_id_val, reqs, pt, ct = row
+            org = orgs.get(org_id_val)
+            organizations.append(AdminOrgAnalytics(
+                organization_id=org_id_val,
+                organization_name=org.name if org else "Unknown",
+                organization_slug=org.slug if org else "",
+                total_requests=reqs or 0,
+                total_prompt_tokens=pt or 0,
+                total_completion_tokens=ct or 0,
+            ))
+
+    return AdminOrgAnalyticsResponse(
+        organizations=organizations,
+        total=len(organizations),
+        from_date=from_date,
+        to_date=to_date,
+    )
