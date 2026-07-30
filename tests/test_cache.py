@@ -111,10 +111,14 @@ class TestResponseCache:
 
 @pytest.mark.asyncio
 async def test_orchestrator_returns_cached_result(app):
+    from app.ai.safety.base import RiskLevel, SafetyAction, SafetyDecision
     from app.rag.vector_store.memory import MemoryVectorStore
     orch = app.state.orchestrator
     orch.retrieval.vector_store = MemoryVectorStore()
     orch._cache_enabled = True
+    orch._check_safety_post_retrieval = lambda ctx, results: SafetyDecision(
+        risk_level=RiskLevel.LOW, action=SafetyAction.ANSWERED,
+    )
 
     real_call_model = orch._call_model
 
@@ -149,10 +153,14 @@ async def test_orchestrator_returns_cached_result(app):
 
 @pytest.mark.asyncio
 async def test_orchestrator_cache_miss_on_different_input(app):
+    from app.ai.safety.base import RiskLevel, SafetyAction, SafetyDecision
     from app.rag.vector_store.memory import MemoryVectorStore
     orch = app.state.orchestrator
     orch.retrieval.vector_store = MemoryVectorStore()
     orch._cache_enabled = True
+    orch._check_safety_post_retrieval = lambda ctx, results: SafetyDecision(
+        risk_level=RiskLevel.LOW, action=SafetyAction.ANSWERED,
+    )
 
     real_call_model = orch._call_model
     call_count = 0
@@ -174,10 +182,14 @@ async def test_orchestrator_cache_miss_on_different_input(app):
 
 @pytest.mark.asyncio
 async def test_orchestrator_cache_disabled_works_normally(app):
+    from app.ai.safety.base import RiskLevel, SafetyAction, SafetyDecision
     from app.rag.vector_store.memory import MemoryVectorStore
     orch = app.state.orchestrator
     orch.retrieval.vector_store = MemoryVectorStore()
     orch._cache_enabled = False
+    orch._check_safety_post_retrieval = lambda ctx, results: SafetyDecision(
+        risk_level=RiskLevel.LOW, action=SafetyAction.ANSWERED,
+    )
 
     real_call_model = orch._call_model
     call_count = 0
